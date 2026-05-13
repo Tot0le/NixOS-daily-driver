@@ -158,6 +158,12 @@ EOF
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
+  # Force Micro as the default editor system-wide (fixes sudo git commands)
+  environment.variables = {
+    EDITOR = "micro";
+    VISUAL = "micro";
+  };
+
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
