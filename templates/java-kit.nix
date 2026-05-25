@@ -14,6 +14,7 @@ let
     xorg.libXrender
     xorg.libXtst
     xorg.libXi
+    xorg.libXxf86vm
     fontconfig
     freetype
   ];

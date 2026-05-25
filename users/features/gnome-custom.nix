@@ -42,10 +42,10 @@ in
     gtk = {
       enable = true;
       theme = {
-        name = "Catppuccin-Mocha-Standard-Blue-Dark";
+        name = "Catppuccin-Mocha-Compact-Blue-Dark";
         package = pkgs.catppuccin-gtk.override {
           accents = [ "blue" ];
-          size = "standard";
+          size = "compact";
           variant = "mocha";
         };
       };
@@ -53,12 +53,24 @@ in
         name = "Tela-circle-dark";
         package = pkgs.tela-circle-icon-theme;
       };
+      gtk3.extraConfig = {
+        gtk-application-prefer-dark-theme = 1;
+      };
+      gtk4.extraConfig = {
+        gtk-application-prefer-dark-theme = 1;
+      };
     };
+
+    # Force stubborn applications to use the dark theme
+    home.sessionVariables.GTK_THEME = "Catppuccin-Mocha-Compact-Blue-Dark";
 
     # Persist theme and extension settings in the dconf database
     dconf.settings = {
       "org/gnome/desktop/interface" = {
         color-scheme = "prefer-dark";
+      };
+      "org/gnome/desktop/wm/preferences" = {
+        theme = "Catppuccin-Mocha-Compact-Blue-Dark";
       };
       "org/gnome/desktop/background" = {
         picture-uri = "file://${config.my.gnome.wallpaper}";
