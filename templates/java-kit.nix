@@ -2,61 +2,51 @@
 
 let
   # Use JDK 21 as the standard development base
-  javaVersion = pkgs.jdk21;
-
-  # Required system libraries for JavaFX native components and OpenGL hardware acceleration
-  runtimeLibs = with pkgs; [
+  jdkVersion = pkgs.jdk21;
+in
+(pkgs.buildFHSEnv {
+  name = "java-media-dev-env";
+  
+  # Target packages to include in the simulated FHS environment
+  targetPkgs = pkgs: with pkgs; [
+    jdkVersion
+    maven
     libGL
-    glib
     gtk3
+    glib
     xorg.libX11
+    xorg.libXtst
+    xorg.libXxf86vm
+    xorg.libXi
     xorg.libXext
     xorg.libXrender
-    xorg.libXtst
-    xorg.libXi
-    xorg.libXxf86vm
     fontconfig
     freetype
+    alsa-lib
+    libpulseaudio
+    ffmpeg_4
+    gst_all_1.gstreamer
+    gst_all_1.gst-plugins-base
+    gst_all_1.gst-plugins-good
+    gst_all_1.gst-plugins-bad
+    gst_all_1.gst-plugins-ugly
   ];
-in
-pkgs.mkShell {
-  buildInputs = [
-    javaVersion
-    pkgs.maven
-  ] ++ runtimeLibs;
-
-  shellHook = ''
-    echo "--- Java & Maven Development Environment ---"
+  
+  # The profile script is executed upon entering the environment
+  profile = ''
+    echo "--- Java, Maven & JavaFX (FHS) Development Environment ---"
     
     # Export JAVA_HOME to ensure Maven and IDEs use the correct JDK path
-    export JAVA_HOME="${javaVersion.home}"
-    
-    # Link native libraries to prevent UnsatisfiedLinkError during graphical execution
-    export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath runtimeLibs}:$LD_LIBRARY_PATH"
+    export JAVA_HOME="${jdkVersion.home}"
     
     echo "Environment Info:"
-    echo "  - JDK: ${javaVersion.version}"
-    echo "  - Maven: $(mvn -v | head -n 1)"
+    echo "  - JDK: ${jdkVersion.version}"
+    echo "  - Maven: \$(mvn -v | head -n 1)"
     echo ""
-    echo "🚀 IMPORTANT: To ensure Eclipse inherits this environment (Fixes libGL errors):"
+    echo "🚀 IMPORTANT: You are now in a simulated standard Linux environment."
     echo "   Type: eclipse &"
-    echo ""
-    echo "👉 To create a new project with JUnit 5 & JavaFX:"
-    echo "mvn archetype:generate \\"
-    echo "    -DarchetypeGroupId=org.openjfx \\"
-    echo "    -DarchetypeArtifactId=javafx-archetype-simple \\"
-    echo "    -DarchetypeVersion=0.0.6 \\"
-    echo "    -DgroupId=com.dev.app \\"
-    echo "    -DartifactId=projectName \\"
-    echo "    -Dversion=1.0 \\"
-    echo "    -DinteractiveMode=false"
-    echo ""
-    echo "💡 JUnit Tip: Add the following dependency to your pom.xml for testing:"
-    echo "   <dependency>"
-    echo "       <groupId>org.junit.jupiter</groupId>"
-    echo "       <artifactId>junit-jupiter</artifactId>"
-    echo "       <version>5.10.0</version>"
-    echo "       <scope>test</scope>"
-    echo "   </dependency>"
+    echo "   (This ensures Eclipse and Maven plugins find native libraries correctly)"
   '';
-}
+  
+  runScript = "bash";
+}).env
