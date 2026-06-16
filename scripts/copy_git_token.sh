@@ -4,6 +4,13 @@
 declare secretFile="$HOME/.config/git-secret"
 declare passFile="$HOME/.config/git-pass"
 
+# Check for reset flag to replace credentials
+if [ "$1" == "-r" ] || [ "$1" == "--reset" ]
+then
+    rm -f "$secretFile" "$passFile"
+    echo "🧹 Existing credentials deleted. Forcing new setup..."
+fi
+
 # Initialize credentials via setup wizard if missing.
 if [ ! -f "$secretFile" ] || [ ! -f "$passFile" ]
 then

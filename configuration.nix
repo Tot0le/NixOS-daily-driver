@@ -16,8 +16,8 @@ let
   # sudo passwd <username>
   # IMPORTANT: Run 'sudo chown -R <username>:users /etc/nixos' to fix shell permissions (e.g., Git status).
   usersConfigs = {
-    anatole = { fullName = "Anatole"; isAdmin = true; layout = "all-Feature"; };
-    user   = { fullName = "Random User";   isAdmin = false; layout = "simple"; };
+    alice = { fullName = "Alice Smith"; isAdmin = false; layout = "simple"; };
+    anatole = { fullName = "anatole"; isAdmin = true; layout = "all-Feature"; };
   };
   
   # Extract names for module propagation
