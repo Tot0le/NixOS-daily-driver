@@ -71,7 +71,7 @@ in
       };
       "org/gnome/desktop/wm/preferences" = {
         theme = "Catppuccin-Mocha-Compact-Blue-Dark";
-        focus-new-windows = "strict";
+        focus-new-windows = "smart";
       };
       "org/gnome/desktop/background" = {
         picture-uri = "file://${config.my.gnome.wallpaper}";
