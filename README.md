@@ -72,35 +72,16 @@ When a user is created, an **Activation Script** assigns them a layout (e.g., `a
    sudo cp /tmp/hardware-configuration.nix /etc/nixos/
    ```
 
-### 2. 👤 Provisioning Users (CRITICAL)
+### 2. 🚀 Automated Secure Setup
 
-**Before building**, you MUST edit the configuration to set your actual username:
-```bash
-sudo nano /etc/nixos/configuration.nix
-```
-Update the `usersConfigs` attribute set at the top with your credentials:
-```nix
-  usersConfigs = {
-    yourname = { fullName = "Your Name"; isAdmin = true; layout = "all-Feature"; };
-  };
-```
-
-### 3. 🔨 Build the System
-Apply the global configuration:
+Run the interactive installation script. It will automatically detect your username, safely patch the configuration files, create the system user if necessary, build the system, and fix the repository permissions:
 
 ```bash
-sudo nixos-rebuild switch
+sudo ./install.sh
 ```
+Once the script completes successfully, open a **NEW** terminal window to trigger your personal workspace initialization (Zsh, Home Manager, etc.).
 
-### 4. 🚀 Auto-Initialization & Permissions
-
-1. **Fix Git Permissions**: Claim ownership of the configuration folder so your local shell can read it properly without root access. Replace `yourname` with your actual username:
-   ```bash
-   sudo chown -R yourname:users /etc/nixos
-   ```
-2. **Initialize Workspace**: Open a **NEW** terminal window. The system will automatically detect your uninitialized workspace, install Home Manager, and apply your layout. (If an error occurs, the script will warn you and stop, allowing you to fix it and try in a new terminal).
-
-### 5. 🔄 Future Updates
+### 3. 🔄 Future Updates
 For future modifications to your user-specific configuration (dotfiles, terminal, shortcuts), you don't need root privileges anymore. Simply run:
 
 ```bash
