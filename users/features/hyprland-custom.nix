@@ -1,7 +1,39 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
+ 
+let
+  # Import the centralized shortcut catalog
+  shortcutCatalog = import ../../conf/shortcuts.list.nix;
+  allShortcuts = shortcutCatalog.commonApps // shortcutCatalog.terminalTools // shortcutCatalog.graphicTools // shortcutCatalog.fans;
+  
+  # Convert GNOME binding syntax to Hyprland syntax
+  convertBinding = gnomeBind:
+    let
+      s1 = builtins.replaceStrings ["<Super>"] ["SUPER, "] gnomeBind;
+      s2 = builtins.replaceStrings ["<Ctrl><Shift>"] ["CTRL SHIFT, "] s1;
+      s3 = builtins.replaceStrings ["<Ctrl>"] ["CTRL, "] s2;
+      s4 = builtins.replaceStrings ["<Shift>"] ["SHIFT, "] s3;
+      s5 = builtins.replaceStrings ["<Alt>"] ["ALT, "] s4;
+    in s5;
 
+  # Extract bindings to detect conflicts
+  allBindingsList = lib.mapAttrsToList (name: data: convertBinding (builtins.elemAt data 2)) allShortcuts;
+  uniqueBindings = lib.unique allBindingsList;
+
+  # Generate Hyprland bind array
+  dynamicBinds = lib.mapAttrsToList (name: data: 
+    "${convertBinding (builtins.elemAt data 2)}, exec, ${builtins.elemAt data 1}"
+  ) allShortcuts;
+in
 {
   home.packages = [ pkgs.wofi ];
+
+  # Abort the build if duplicate shortcut bindings are detected
+  assertions = [
+    {
+      assertion = builtins.length allBindingsList == builtins.length uniqueBindings;
+      message = "Conflict detected in shortcuts.list.nix bindings for Hyprland.";
+    }
+  ];
   
   wayland.windowManager.hyprland = {
     enable = true;
@@ -38,9 +70,8 @@
 
       # Define core keyboard shortcuts
       bind = [
-        "$mainMod, Q, exec, kitty"
         "$mainMod, R, exec, wofi --show drun"
-        "$mainMod, C, killactive,"
+        "$mainMod, X, killactive,"
         "$mainMod, M, exit,"
         "$mainMod, V, togglefloating,"
         "$mainMod, G, fullscreen,"
@@ -62,7 +93,7 @@
         "$mainMod SHIFT, eacute, movetoworkspace, 2"
         "$mainMod SHIFT, quotedbl, movetoworkspace, 3"
         "$mainMod SHIFT, apostrophe, movetoworkspace, 4"
-      ];
+      ] ++ dynamicBinds;
       
       # Mouse bindings for window management
       bindm = [
