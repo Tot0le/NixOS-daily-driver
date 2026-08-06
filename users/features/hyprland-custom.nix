@@ -25,7 +25,12 @@ let
   ) allShortcuts;
 in
 {
-  home.packages = [ pkgs.wofi ];
+  home.packages = with pkgs; [ 
+    wofi 
+    grim 
+    slurp 
+    wl-clipboard 
+  ];
 
   # Abort the build if duplicate shortcut bindings are detected
   assertions = [
@@ -75,6 +80,9 @@ in
         "$mainMod, M, exit,"
         "$mainMod, V, togglefloating,"
         "$mainMod, G, fullscreen,"
+
+        # Screenshot utility (select area and copy to clipboard)
+        "$mainMod SHIFT, S, exec, grim -g \"$(slurp -d)\" - | wl-copy"
         
         # Window focus management
         "$mainMod, left, movefocus, l"
