@@ -23,6 +23,7 @@ in
     ../../users/features/gnome-custom.nix
     ../../users/features/kitty-terminal.nix 
     ../../users/features/zsh-shell.nix
+    ../../users/features/hyprland-custom.nix
   ];
 
   # User-specific GNOME settings

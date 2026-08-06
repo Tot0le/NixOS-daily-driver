@@ -39,7 +39,9 @@ in
 
   # Bootloader.
   boot.loader.grub.enable = true;
-  boot.loader.grub.device = "/dev/sda";
+  boot.loader.grub.device = "nodev";
+  boot.loader.grub.efiSupport = true;
+  boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.grub.useOSProber = true;
 
   networking.hostName = "nixos"; # Define your hostname.
@@ -76,6 +78,9 @@ in
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
 
+  # Enable Hyprland Wayland compositor globally.
+  programs.hyprland.enable = true;
+  
   # Configure keymap in X11
   services.xserver.xkb = {
     layout = "fr";
