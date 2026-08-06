@@ -25,13 +25,20 @@ let
   ) allShortcuts;
 in
 {
-  home.packages = with pkgs; [ 
-    wofi 
-    grim 
-    slurp 
-    wl-clipboard 
+  home.packages = with pkgs; [
+    wofi
+    grim
+    slurp
+    wl-clipboard
+    libnotify
   ];
 
+  # Enable Wayland notification daemon
+  services.mako = {
+    enable = true;
+    defaultTimeout = 4000;
+  };
+  
   # Abort the build if duplicate shortcut bindings are detected
   assertions = [
     {
@@ -44,6 +51,11 @@ in
     enable = true;
     
     settings = {
+      # Startup programs
+        exec-once = [
+        "mako"
+      ];
+      
       # Define primary modifier key
       "$mainMod" = "SUPER";
 
