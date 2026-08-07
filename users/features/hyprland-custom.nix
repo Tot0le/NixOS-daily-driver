@@ -27,9 +27,7 @@ in
 {
   home.packages = with pkgs; [
     wofi
-    grim
-    slurp
-    wl-clipboard
+    hyprshot
     libnotify
   ];
 
@@ -37,6 +35,21 @@ in
   services.mako = {
     enable = true;
     defaultTimeout = 4000;
+  };
+
+  # Status bar configuration
+  programs.waybar = {
+    enable = true;
+    settings = {
+      mainBar = {
+        layer = "top";
+        position = "top";
+        height = 30;
+        modules-left = [ "hyprland/workspaces" "hyprland/window" ];
+        modules-center = [ "clock" ];
+        modules-right = [ "network" "battery" "tray" ];
+      };
+    };
   };
   
   # Abort the build if duplicate shortcut bindings are detected
@@ -54,6 +67,7 @@ in
       # Startup programs
         exec-once = [
         "mako"
+        "waybar"
       ];
       
       # Define primary modifier key
@@ -93,8 +107,10 @@ in
         "$mainMod, V, togglefloating,"
         "$mainMod, G, fullscreen,"
 
-        # Screenshot utility (select area and copy to clipboard)
-        "$mainMod SHIFT, S, exec, grim -g \"$(slurp -d)\" - | wl-copy"
+        # Hyprshot interactive screenshot bindings
+        ", PRINT, exec, hyprshot -m region --clipboard-only"
+        "SHIFT, PRINT, exec, hyprshot -m window --clipboard-only"
+        "CTRL, PRINT, exec, hyprshot -m output --clipboard-only"
         
         # Window focus management
         "$mainMod, left, movefocus, l"
