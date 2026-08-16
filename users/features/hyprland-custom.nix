@@ -36,6 +36,10 @@ in
     wl-clipboard fd qt6.qtmultimedia qt6.qt5compat qt6.qtwebsockets qt6.qtwebengine
     ripgrep gtk3 cava cliphist tree jq socat pamixer brightnessctl acpi iw bluez
     networkmanager lm_sensors bc pulseaudio ladspaPlugins ladspa-sdk imagemagick
+
+    # Fonts for Quickshell UI
+    nerd-fonts.iosevka
+    nerd-fonts.jetbrains-mono
   ];
 
   # Abort the build if duplicate shortcut bindings are detected
