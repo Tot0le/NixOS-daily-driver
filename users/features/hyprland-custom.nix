@@ -37,6 +37,10 @@ in
     ripgrep gtk3 cava cliphist tree jq socat pamixer brightnessctl acpi iw bluez
     networkmanager lm_sensors bc pulseaudio ladspaPlugins ladspa-sdk imagemagick
 
+    # Performance & Media tools
+    inotify-tools
+    playerctl
+    
     # Fonts for Quickshell UI
     nerd-fonts.iosevka
     nerd-fonts.jetbrains-mono
