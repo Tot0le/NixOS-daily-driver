@@ -1,5 +1,5 @@
 { config, pkgs, lib, ... }:
- 
+
 let
   # Import the centralized shortcut catalog
   shortcutCatalog = import ../../conf/shortcuts.list.nix;
@@ -19,39 +19,25 @@ let
   allBindingsList = lib.mapAttrsToList (name: data: convertBinding (builtins.elemAt data 2)) allShortcuts;
   uniqueBindings = lib.unique allBindingsList;
 
-  # Generate Hyprland bind array
-  dynamicBinds = lib.mapAttrsToList (name: data: 
-    "${convertBinding (builtins.elemAt data 2)}, exec, ${builtins.elemAt data 1}"
-  ) allShortcuts;
+  # Generate Hyprland bind string block
+  dynamicBindsText = builtins.concatStringsSep "\n" (
+    lib.mapAttrsToList (name: data: 
+      "bind = ${convertBinding (builtins.elemAt data 2)}, exec, ${builtins.elemAt data 1}"
+    ) allShortcuts
+  );
 in
 {
   home.packages = with pkgs; [
     wofi
     hyprshot
-    libnotify
+    quickshell
+    # External script dependencies
+    rofi pavucontrol fortune wl-screenrec alsa-utils swww networkmanager_dmenu
+    wl-clipboard fd qt6.qtmultimedia qt6.qt5compat qt6.qtwebsockets qt6.qtwebengine
+    ripgrep gtk3 cava cliphist tree jq socat pamixer brightnessctl acpi iw bluez
+    networkmanager lm_sensors bc pulseaudio ladspaPlugins ladspa-sdk imagemagick
   ];
 
-  # Enable Wayland notification daemon
-  services.mako = {
-    enable = true;
-    defaultTimeout = 4000;
-  };
-
-  # Status bar configuration
-  programs.waybar = {
-    enable = true;
-    settings = {
-      mainBar = {
-        layer = "top";
-        position = "top";
-        height = 30;
-        modules-left = [ "hyprland/workspaces" "hyprland/window" ];
-        modules-center = [ "clock" ];
-        modules-right = [ "network" "battery" "tray" ];
-      };
-    };
-  };
-  
   # Abort the build if duplicate shortcut bindings are detected
   assertions = [
     {
@@ -59,83 +45,47 @@ in
       message = "Conflict detected in shortcuts.list.nix bindings for Hyprland.";
     }
   ];
-  
+
+  # Link only subdirectories to allow Nix to safely generate the master hyprland.conf
+  xdg.configFile."hypr/config".source = ../../conf/hypr/config;
+  xdg.configFile."hypr/scripts".source = ../../conf/hypr/scripts;
+  xdg.configFile."hypr/colors.conf".source = ../../conf/hypr/colors.conf;
+
   wayland.windowManager.hyprland = {
     enable = true;
     
-    settings = {
-      # Startup programs
-        exec-once = [
-        "mako"
-        "waybar"
-      ];
+    # Inject bindings BEFORE external sources to prevent parser lockouts
+    extraConfig = ''
+      # 1. Failsafe core bindings
+      bind = SUPER, Return, exec, kitty
+      bind = SUPER, X, killactive
+      bind = SUPER, M, exit
+
+      # Screenshot utility
+      bind = , Print, exec, hyprshot -m region --clipboard-only
+      bind = SHIFT, Print, exec, hyprshot -m window --clipboard-only
+      bind = CTRL, Print, exec, hyprshot -m output --clipboard-only
       
-      # Define primary modifier key
-      "$mainMod" = "SUPER";
+      # 2. Native workspace navigation (AZERTY)
+      bind = SUPER, ampersand, workspace, 1
+      bind = SUPER, eacute, workspace, 2
+      bind = SUPER, quotedbl, workspace, 3
+      bind = SUPER, apostrophe, workspace, 4
 
-      # Configure window gaps and borders
-      general = {
-        gaps_in = 5;
-        gaps_out = 20;
-        border_size = 2;
-        "col.active_border" = "rgba(33ccffee) rgba(00ff99ee) 45deg";
-        "col.inactive_border" = "rgba(595959aa)";
-        layout = "dwindle";
-      };
+      # 3. Dynamic injected bindings
+      ${dynamicBindsText}
 
-      # Set basic aesthetic parameters
-      decoration = {
-        rounding = 10;
-        shadow = {
-          enabled = true;
-          range = 4;
-          render_power = 3;
-          color = "rgba(1a1a1aee)";
-        };
-      };
+      # 4. External modular configuration
+      source = ~/.config/hypr/colors.conf
+      source = ~/.config/hypr/config/monitors.conf
+      source = ~/.config/hypr/config/env.conf
+      source = ~/.config/hypr/config/autostart.conf
+      source = ~/.config/hypr/config/variables.conf
+      source = ~/.config/hypr/config/settings.conf
+      source = ~/.config/hypr/config/rules.conf
+    '';
 
-     # Configure keyboard layout (AZERTY)
-     input = {
-       kb_layout = "fr";
-     };
-
-      # Define core keyboard shortcuts
-      bind = [
-        "$mainMod, R, exec, wofi --show drun"
-        "$mainMod, X, killactive,"
-        "$mainMod, M, exit,"
-        "$mainMod, V, togglefloating,"
-        "$mainMod, G, fullscreen,"
-
-        # Hyprshot interactive screenshot bindings
-        ", PRINT, exec, hyprshot -m region --clipboard-only"
-        "SHIFT, PRINT, exec, hyprshot -m window --clipboard-only"
-        "CTRL, PRINT, exec, hyprshot -m output --clipboard-only"
-        
-        # Window focus management
-        "$mainMod, left, movefocus, l"
-        "$mainMod, right, movefocus, r"
-        "$mainMod, up, movefocus, u"
-        "$mainMod, down, movefocus, d"
-
-        # Workspace navigation
-        "$mainMod, ampersand, workspace, 1"
-        "$mainMod, eacute, workspace, 2"
-        "$mainMod, quotedbl, workspace, 3"
-        "$mainMod, apostrophe, workspace, 4"
-         
-        # Move active window to a workspace
-        "$mainMod SHIFT, ampersand, movetoworkspace, 1"
-        "$mainMod SHIFT, eacute, movetoworkspace, 2"
-        "$mainMod SHIFT, quotedbl, movetoworkspace, 3"
-        "$mainMod SHIFT, apostrophe, movetoworkspace, 4"
-      ] ++ dynamicBinds;
-      
-      # Mouse bindings for window management
-      bindm = [
-        "$mainMod, mouse:272, movewindow"
-        "$mainMod, mouse:273, resizewindow"
-      ];
-    };
+    # Leave settings empty to enforce strict ordering in extraConfig
+    settings = {};
   };
 }
