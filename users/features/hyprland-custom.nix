@@ -91,6 +91,9 @@ in
       source = ~/.config/hypr/config/variables.conf
       source = ~/.config/hypr/config/settings.conf
       source = ~/.config/hypr/config/rules.conf
+
+      # User-specific local overrides
+      source = ~/.config/hypr/local.conf
     '';
 
     # Leave settings empty to enforce strict ordering in extraConfig

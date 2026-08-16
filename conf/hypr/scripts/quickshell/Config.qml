@@ -113,10 +113,17 @@ Item {
             "kbOptions": config.kbOptions,
             "workspaceCount": config.workspaceCount
         };
-
         config.updateJsonBulk(configObj);
+        
+        // Apply layout dynamically and persist to local sandbox
+        let applyLayout = "hyprctl keyword input:kb_layout '" + config.language + "'";
+        let applyOptions = "hyprctl keyword input:kb_options '" + config.kbOptions + "'";
+        let persistLocal = "echo -e 'input {\\n    kb_layout = " + config.language + "\\n    kb_options = " + config.kbOptions + "\\n}' > ~/.config/hypr/local.conf";
+        
+        sh(applyLayout + " ; " + applyOptions + " ; " + persistLocal);
+        
         sh("notify-send 'Quickshell' 'Settings Applied Successfully!'");
-
+        
         if (config.workspaceCount !== config.initialWorkspaceCount) {
             sh(`qs -p "${qsScriptsDir}/TopBar.qml" ipc call topbar queueReload`);
             config.initialWorkspaceCount = config.workspaceCount;
