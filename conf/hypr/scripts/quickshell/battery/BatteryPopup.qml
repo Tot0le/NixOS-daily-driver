@@ -33,7 +33,6 @@ Item {
             let hasAction = false;
             try {
                 let parsed = item.actionsJson ? JSON.parse(item.actionsJson) : [];
-                // Fix: Removed filter so default actions (like "Open") correctly flag the notification as actionable
                 hasAction = parsed.length > 0;
             } catch(e) {}
 
@@ -53,11 +52,9 @@ Item {
     // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
-        // Uses the physical screen width so the popup scales synchronously with the TopBar
         currentWidth: Screen.width
     }
     
-    // Helper function scoped to the root Item for easy access in deeply nested elements and Canvases
     function s(val) { 
         return scaler.s(val); 
     }
@@ -91,6 +88,19 @@ Item {
     // -------------------------------------------------------------------------
     // STATE & POLLING
     // -------------------------------------------------------------------------
+    property bool isDesktop: false
+    
+    Process {
+        id: chassisDetector
+        running: true
+        command: ["bash", "-c", "if ls /sys/class/power_supply/BAT* 1> /dev/null 2>&1; then echo 'laptop'; else echo 'desktop'; fi"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                window.isDesktop = (this.text.trim() === "desktop");
+            }
+        }
+    }
+
     property int batCapacity: 0
     property string batStatus: "Unknown"
     property string powerProfile: "balanced"
@@ -103,10 +113,7 @@ Item {
     property real sysBrightness: 0
     
     property string currentUserName: ""
-    
     property bool dndEnabled: false
-
-    // State object for collapsible notification groups
     property var collapsedGroups: ({})
 
     function toggleGroup(groupName) {
@@ -119,7 +126,6 @@ Item {
         return collapsedGroups[groupName] === true;
     }
 
-    // Anti-Jitter Sync States
     property bool isDraggingVol: false
     property bool isDraggingBri: false
 
@@ -128,8 +134,8 @@ Item {
 
     readonly property bool isCharging: batStatus === "Charging"
 
-    // Unified hue for Battery
     readonly property color batColorStart: {
+        if (isDesktop) return window.blue;
         if (isCharging) return window.green;
         if (batCapacity >= 70) return window.blue;
         if (batCapacity >= 30) return window.yellow;
@@ -137,7 +143,6 @@ Item {
     }
     readonly property color batColorEnd: Qt.lighter(batColorStart, 1.15)
 
-    // Unified hue for Performance Profile
     readonly property color profileStart: {
         if (powerProfile === "performance") return window.red;
         if (powerProfile === "power-saver") return window.green;
@@ -145,9 +150,9 @@ Item {
     }
     readonly property color profileEnd: Qt.lighter(profileStart, 1.15)
 
-    // Ambient Blobs - Based strictly on aesthetic pairs derived from battery state
     readonly property color ambientPrimary: window.batColorStart
     readonly property color ambientSecondary: {
+        if (isDesktop) return window.mauve;
         if (isCharging) return window.sapphire;
         if (batCapacity >= 70) return window.mauve;
         if (batCapacity >= 30) return window.peach;
@@ -160,7 +165,6 @@ Item {
     onAnimCapacityChanged: batCanvas.requestPaint()
     onBatColorStartChanged: batCanvas.requestPaint()
 
-    // --- INIT DND STATE FROM CACHE ---
     Process {
         id: dndInit
         running: true
@@ -183,11 +187,25 @@ Item {
         }
     }
 
+    // State variable for Caffeine
+    property bool caffeineActive: false
+
+    Process {
+        id: caffeineInit
+        running: true
+        command: ["bash", "-c", "if [ -f /tmp/caffeine_on ]; then echo '1'; else echo '0'; fi"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                window.caffeineActive = (this.text.trim() === "1");
+            }
+        }
+    }
+    
     Process {
         id: sysPoller
         command: ["bash", "-c", 
-            "cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '0'; " +
-            "cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'Unknown'; " +
+            "batCap=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1); echo \"${batCap:-0}\"; " +
+            "batStat=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1); echo \"${batStat:-Unknown}\"; " +
             "powerprofilesctl get 2>/dev/null || echo 'balanced'; " +
             "awk '{print int($1/3600)\"h \"int(($1%3600)/60)\"m\"}' /proc/uptime 2>/dev/null || echo '0h 0m'; " +
             "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3==\"[MUTED]\"?\"off\":\"on\")}' || echo '0 on'; " +
@@ -224,6 +242,7 @@ Item {
             }
         }
     }
+    
     Timer {
         interval: 1500; running: true; repeat: true; triggeredOnStart: true;
         onTriggered: sysPoller.running = true
@@ -234,7 +253,6 @@ Item {
         from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: true
     }
 
-    // --- ENHANCED STARTUP ANIMATION STATES ---
     property real introMain: 0
     property real introTop: 0
     property real introNotifs: 0
@@ -245,45 +263,13 @@ Item {
 
     ParallelAnimation {
         running: true
-
-        // Base window fades, scales, and lifts
         NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart }
-
-        // Top bar drops in
-        SequentialAnimation {
-            PauseAnimation { duration: 100 }
-            NumberAnimation { target: window; property: "introTop"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutBack; easing.overshoot: 1.0 }
-        }
-
-        // Notification List cascades in smoothly
-        SequentialAnimation {
-            PauseAnimation { duration: 150 }
-            NumberAnimation { target: window; property: "introNotifs"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuart }
-        }
-
-        // Central core pops out and breathes
-        SequentialAnimation {
-            PauseAnimation { duration: 250 }
-            NumberAnimation { target: window; property: "introCore"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
-        }
-
-        // Hardware sliders slide up
-        SequentialAnimation {
-            PauseAnimation { duration: 350 }
-            NumberAnimation { target: window; property: "introSliders"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart }
-        }
-
-        // Actions waterfall
-        SequentialAnimation {
-            PauseAnimation { duration: 450 }
-            NumberAnimation { target: window; property: "introActions"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutExpo }
-        }
-
-        // Power profiles finish the wave
-        SequentialAnimation {
-            PauseAnimation { duration: 550 }
-            NumberAnimation { target: window; property: "introProfiles"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutBack; easing.overshoot: 0.8 }
-        }
+        SequentialAnimation { PauseAnimation { duration: 100 } NumberAnimation { target: window; property: "introTop"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutBack; easing.overshoot: 1.0 } }
+        SequentialAnimation { PauseAnimation { duration: 150 } NumberAnimation { target: window; property: "introNotifs"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuart } }
+        SequentialAnimation { PauseAnimation { duration: 250 } NumberAnimation { target: window; property: "introCore"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+        SequentialAnimation { PauseAnimation { duration: 350 } NumberAnimation { target: window; property: "introSliders"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart } }
+        SequentialAnimation { PauseAnimation { duration: 450 } NumberAnimation { target: window; property: "introActions"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutExpo } }
+        SequentialAnimation { PauseAnimation { duration: 550 } NumberAnimation { target: window; property: "introProfiles"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutBack; easing.overshoot: 0.8 } }
     }
 
     ParallelAnimation {
@@ -297,7 +283,6 @@ Item {
         NumberAnimation { target: window; property: "introProfiles"; to: 0; duration: 150; easing.type: Easing.InQuart }
     }
 
-    // Helper: Safely clear an entire group of notifications by AppName
     function clearGroup(appName) {
         if (!notifModel) return;
         for (let i = notifModel.count - 1; i >= 0; i--) {
@@ -311,16 +296,12 @@ Item {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // UI LAYOUT
-    // -------------------------------------------------------------------------
     Item {
         anchors.fill: parent
         scale: 0.92 + (0.08 * introMain)
         opacity: introMain
         transform: Translate { y: window.s(15) * (1 - introMain) }
 
-        // Unified Outer Background
         Rectangle {
             anchors.fill: parent
             radius: window.s(20)
@@ -329,7 +310,6 @@ Item {
             border.width: 1
             clip: true
 
-            // Rotating Background Blobs - Spanning across the whole widget natively
             Rectangle {
                 width: parent.width * 0.8; height: width; radius: width / 2
                 x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
@@ -350,11 +330,8 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                spacing: window.s(15) // Seamless separation instead of a line
+                spacing: window.s(15) 
 
-                // ==========================================
-                // LEFT SIDE: NOTIFICATION CENTER
-                // ==========================================
                 Item {
                     Layout.preferredWidth: window.s(320)
                     Layout.fillHeight: true
@@ -364,7 +341,6 @@ Item {
                         anchors.margins: window.s(20)
                         spacing: window.s(15)
 
-                        // --- Notification Header & DND Toggle ---
                         RowLayout {
                             Layout.fillWidth: true
                             Layout.preferredHeight: window.s(38)
@@ -381,9 +357,8 @@ Item {
                                 color: window.text
                             }
 
-                            Item { Layout.fillWidth: true } // Spacer
+                            Item { Layout.fillWidth: true } 
 
-                            // DND Toggle Button
                             Rectangle {
                                 Layout.preferredWidth: dndMa.containsMouse ? window.s(38) + dndText.implicitWidth + window.s(8) : window.s(38)
                                 Layout.preferredHeight: window.s(38)
@@ -436,7 +411,6 @@ Item {
                             }
                         }
 
-                        // --- Zero State ---
                         Text {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
@@ -451,7 +425,6 @@ Item {
                             opacity: introNotifs
                         }
 
-                        // --- Notification List ---
                         ListView {
                             id: notifList
                             Layout.fillWidth: true
@@ -470,7 +443,6 @@ Item {
                                 contentItem: Rectangle { implicitWidth: window.s(4); radius: window.s(2); color: window.surface2 }
                             }
 
-                            // Fluid Animations
                             add: Transition {
                                 ParallelAnimation {
                                     NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 400; easing.type: Easing.OutQuint }
@@ -488,7 +460,6 @@ Item {
                                 NumberAnimation { properties: "y"; duration: 400; easing.type: Easing.OutExpo }
                             }
 
-                            // --- Grouping Configuration ---
                             section.property: "appName"
                             section.criteria: ViewSection.FullString
                             section.delegate: Item {
@@ -509,7 +480,6 @@ Item {
                                         anchors.rightMargin: window.s(6)
                                         spacing: window.s(8)
 
-                                        // Clickable Area for Collapse Toggle
                                         MouseArea {
                                             id: headerMa
                                             Layout.fillWidth: true
@@ -542,7 +512,6 @@ Item {
                                             }
                                         }
 
-                                        // Clear Group Button
                                         Rectangle {
                                             Layout.preferredWidth: window.s(26)
                                             Layout.preferredHeight: window.s(26)
@@ -569,7 +538,6 @@ Item {
                                 }
                             }
 
-                            // --- Individual Notification Card ---
                             delegate: Item {
                                 id: delegateWrapper
                                 width: ListView.view.width
@@ -584,7 +552,6 @@ Item {
 
                                 property var realNotif: window.liveNotifs ? window.liveNotifs[model.uid] : null
 
-                                // Auto-clean linkage to DBus so if it's accepted via hotkey/elsewhere, it deletes here
                                 Connections {
                                     target: delegateWrapper.realNotif || null
                                     function onClosed() {
@@ -652,7 +619,6 @@ Item {
                                         }
                                     }
 
-                                    // Left side accent stripe
                                     Rectangle {
                                         width: window.s(4)
                                         height: parent.height
@@ -666,7 +632,7 @@ Item {
                                         anchors.right: parent.right
                                         anchors.top: parent.top
                                         anchors.margins: window.s(14)
-                                        anchors.leftMargin: window.s(18) // make room for the accent stripe
+                                        anchors.leftMargin: window.s(18) 
                                         spacing: window.s(6)
 
                                         RowLayout {
@@ -684,7 +650,6 @@ Item {
                                                 textFormat: Text.StyledText
                                             }
 
-                                            // Individual Dismiss Button
                                             Rectangle {
                                                 Layout.preferredWidth: window.s(22)
                                                 Layout.preferredHeight: window.s(22)
@@ -722,7 +687,6 @@ Item {
                                             onLinkActivated: (link) => Quickshell.execDetached(["xdg-open", link])
                                         }
 
-                                        // Action Buttons Dock 
                                         RowLayout {
                                             Layout.fillWidth: true
                                             Layout.topMargin: delegateWrapper.actionArray.length > 0 ? window.s(6) : 0
@@ -795,7 +759,6 @@ Item {
                     Layout.preferredWidth: window.s(480)
                     Layout.fillHeight: true
 
-                    // Radar Rings (Centered on the Hardware Panel so it aligns perfectly with the gauge)
                     Item {
                         anchors.fill: parent
                         
@@ -816,8 +779,9 @@ Item {
                         }
                     }
 
-                    // TOP: UPTIME COMPONENT
+                    // TOP: UPTIME COMPONENT (Hidden on desktop to centralize it)
                     Row {
+                        visible: !window.isDesktop
                         anchors.top: parent.top
                         anchors.left: parent.left
                         anchors.margins: window.s(25)
@@ -826,7 +790,6 @@ Item {
                         transform: Translate { y: window.s(-20) * (1.0 - introTop) }
                         opacity: introTop
                         
-                        // Hours Box
                         Rectangle {
                             width: window.s(44); height: window.s(48); radius: window.s(10)
                             color: window.surface0; border.color: window.surface1; border.width: 1
@@ -848,7 +811,6 @@ Item {
                             }
                         }
 
-                        // Pulsing Colon
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: ":"
@@ -865,7 +827,6 @@ Item {
                             }
                         }
 
-                        // Mins Box
                         Rectangle {
                             width: window.s(44); height: window.s(48); radius: window.s(10)
                             color: window.surface0; border.color: window.surface1; border.width: 1
@@ -888,7 +849,6 @@ Item {
                         }
                     }
 
-                    // Expanding top-right logout icon
                     Rectangle {
                         id: logoutBtn
                         anchors.top: parent.top; anchors.right: parent.right
@@ -937,9 +897,9 @@ Item {
                             id: logoutMa
                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: { 
-                                exitAnim.start(); // Trigger graceful UI exit
+                                exitAnim.start(); 
                                 Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/exit.sh"]); 
-                                Quickshell.execDetached(["sh", "-c", "echo 'close' > " + paths.runDir + "/widget_state"]); 
+                                Quickshell.execDetached(["bash", "-c", "echo 'close' > " + paths.runDir + "/widget_state"]); 
                             }
                         }
                     }
@@ -953,7 +913,6 @@ Item {
                         transform: Translate { y: window.s(25) * (1 - introCore) }
                         scale: 0.9 + (0.1 * introCore)
 
-                        // CLEAN OUTSIDE GLOW HALO
                         Rectangle {
                             anchors.centerIn: centralCore
                             width: centralCore.width + window.s(45)
@@ -979,7 +938,7 @@ Item {
                             radius: width / 2
                             z: 1
                             
-                            property bool isDangerState: !window.isCharging && window.batCapacity < 15
+                            property bool isDangerState: !window.isDesktop && !window.isCharging && window.batCapacity < 15
                             
                             SequentialAnimation on scale {
                                 loops: Animation.Infinite
@@ -1027,7 +986,7 @@ Item {
                                 
                                 property real pumpPhase: 0.0
                                 NumberAnimation on pumpPhase {
-                                    running: heroMa.containsMouse && window.isCharging
+                                    running: heroMa.containsMouse && window.isCharging && !window.isDesktop
                                     loops: Animation.Infinite
                                     from: 0.0; to: 1.0; duration: 1200
                                     easing.type: Easing.InOutSine 
@@ -1036,15 +995,15 @@ Item {
                                 
                                 property real dischargePhase: 1.0
                                 NumberAnimation on dischargePhase {
-                                    running: heroMa.containsMouse && !window.isCharging
+                                    running: heroMa.containsMouse && !window.isCharging && !window.isDesktop
                                     loops: Animation.Infinite
                                     from: 1.0; to: 0.0; duration: 1600
                                     easing.type: Easing.InOutSine
                                     onStopped: batCanvas.requestPaint()
                                 }
                                 
-                                onPumpPhaseChanged: { if(heroMa.containsMouse && window.isCharging) batCanvas.requestPaint() }
-                                onDischargePhaseChanged: { if(heroMa.containsMouse && !window.isCharging) batCanvas.requestPaint() }
+                                onPumpPhaseChanged: { if(heroMa.containsMouse && window.isCharging && !window.isDesktop) batCanvas.requestPaint() }
+                                onDischargePhaseChanged: { if(heroMa.containsMouse && !window.isCharging && !window.isDesktop) batCanvas.requestPaint() }
                                 
                                 Canvas {
                                     id: batCanvas
@@ -1058,9 +1017,24 @@ Item {
                                         var centerX = width / 2;
                                         var centerY = height / 2;
                                         var radius = (width / 2) - window.s(18); 
-                                        var endAngle = (window.animCapacity / 100) * 2 * Math.PI;
                                         
                                         ctx.lineCap = "round";
+                                        
+                                        // Desktop Static Ring Override
+                                        if (window.isDesktop) {
+                                            var fillGradDk = ctx.createLinearGradient(0, height, width, 0);
+                                            fillGradDk.addColorStop(0, window.batColorStart.toString());
+                                            fillGradDk.addColorStop(1, window.batColorEnd.toString());
+                                            
+                                            ctx.lineWidth = window.s(14);
+                                            ctx.beginPath();
+                                            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                                            ctx.strokeStyle = fillGradDk;
+                                            ctx.stroke();
+                                            return;
+                                        }
+
+                                        var endAngle = (window.animCapacity / 100) * 2 * Math.PI;
                                         
                                         ctx.lineWidth = window.s(8);
                                         ctx.beginPath();
@@ -1145,7 +1119,7 @@ Item {
                                             font.family: "Iosevka Nerd Font"
                                             font.pixelSize: window.s(28)
                                             color: window.batColorStart
-                                            text: window.isCharging ? "󰂄" : (window.batCapacity > 20 ? "󰁹" : "󰂃")
+                                            text: window.isDesktop ? "󰒋" : (window.isCharging ? "󰂄" : (window.batCapacity > 20 ? "󰁹" : "󰂃"))
                                             Behavior on color { ColorAnimation { duration: 400 } }
                                         }
                                         
@@ -1154,7 +1128,7 @@ Item {
                                             font.weight: Font.Black
                                             font.pixelSize: window.s(54)
                                             color: window.text
-                                            text: Math.round(window.animCapacity) + "%" 
+                                            text: window.isDesktop ? window.upHours + "H" : (Math.round(window.animCapacity) + "%") 
                                         }
                                     }
 
@@ -1163,12 +1137,13 @@ Item {
                                         font.family: "JetBrains Mono"
                                         font.weight: Font.Bold
                                         font.pixelSize: window.s(13)
-                                        
-                                        color: window.isCharging 
+                                        color: window.isDesktop 
+                                            ? window.subtext0 
+                                            : (window.isCharging 
                                                 ? Qt.tint(window.green, Qt.rgba(1, 1, 1, parent.textPulse * 0.4)) 
-                                                : (centralCore.isDangerState ? Qt.tint(window.red, Qt.rgba(1, 1, 1, parent.textPulse * 0.3)) : window.subtext0)
+                                                : (centralCore.isDangerState ? Qt.tint(window.red, Qt.rgba(1, 1, 1, parent.textPulse * 0.3)) : window.subtext0))
                                         
-                                        text: window.batStatus.toUpperCase()
+                                        text: window.isDesktop ? (window.upMins + " MIN UPTIME") : window.batStatus.toUpperCase()
                                         Behavior on color { ColorAnimation { duration: 300 } }
                                     }
                                 }
@@ -1195,7 +1170,7 @@ Item {
                             // 1. HARDWARE CONTROLS DOCK (Sliders)
                             Rectangle {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: window.s(96)
+                                Layout.preferredHeight: window.isDesktop ? window.s(58) : window.s(96)
                                 radius: window.s(14)
                                 color: window.surface0
                                 border.color: window.surface1
@@ -1209,8 +1184,9 @@ Item {
                                     anchors.margins: window.s(14)
                                     spacing: window.s(12)
 
-                                    // Brightness Slider
+                                    // Brightness Slider (Hidden on Desktop)
                                     RowLayout {
+                                        visible: !window.isDesktop
                                         Layout.fillWidth: true
                                         spacing: window.s(15)
 
@@ -1394,10 +1370,12 @@ Item {
                                 
                                 Repeater {
                                     model: ListModel {
-                                        ListElement { cmd: "bash ~/.config/hypr/scripts/lock.sh"; icon: ""; baseColor: "mauve"; weight: 1.0 }
-                                        ListElement { cmd: "bash ~/.config/hypr/scripts/lock.sh & systemctl suspend"; icon: "ᶻ 𝗓 𝗓"; baseColor: "blue"; weight: 1.0 }
-                                        ListElement { cmd: "systemctl reboot"; icon: "󰑓"; baseColor: "yellow"; weight: 2.5 }
-                                        ListElement { cmd: "systemctl poweroff -i"; icon: ""; baseColor: "red"; weight: 3.5 }
+                                        // We add isToggle: true only for Caffeine
+                                        ListElement { sysCmd: "if [ -f /tmp/caffeine_on ]; then rm /tmp/caffeine_on && hypridle >/dev/null 2>&1 & else touch /tmp/caffeine_on && killall hypridle 2>/dev/null || true; fi"; sysIcon: ""; sysColor: "peach"; sysWeight: 1.0; isToggle: true }
+                                        ListElement { sysCmd: "bash ~/.config/hypr/scripts/lock.sh"; sysIcon: ""; sysColor: "mauve"; sysWeight: 1.0; isToggle: false }
+                                        ListElement { sysCmd: "bash ~/.config/hypr/scripts/lock.sh & systemctl suspend"; sysIcon: "ᶻ 𝗓 𝗓"; sysColor: "blue"; sysWeight: 1.0; isToggle: false }
+                                        ListElement { sysCmd: "systemctl reboot"; sysIcon: "󰑓"; sysColor: "yellow"; sysWeight: 2.5; isToggle: false }
+                                        ListElement { sysCmd: "systemctl poweroff -i"; sysIcon: ""; sysColor: "red"; sysWeight: 3.5; isToggle: false }
                                     }
                                     
                                     delegate: Rectangle {
@@ -1406,19 +1384,24 @@ Item {
                                         Layout.fillHeight: true
                                         radius: window.s(14)
 
+                                        property string boundCmd: model.sysCmd
+                                        property color c1: window[model.sysColor] || window.surface1
+                                        property color c2: Qt.lighter(c1, 1.2)
+                                        
+                                        property bool isToggledOn: model.isToggle && window.caffeineActive
+
                                         opacity: introActions
                                         transform: Translate { y: window.s(30) * (1.0 - introActions) + (index * window.s(12) * (1.0 - introActions)) }
                                         
-                                        property color c1: window[baseColor] || window.surface1
-                                        property color c2: Qt.lighter(c1, 1.2)
-
-                                        color: actionMa.containsMouse ? window.surface1 : window.surface0
-                                        border.color: actionMa.containsMouse ? c1 : window.surface2
-                                        border.width: actionMa.containsMouse ? 2 : 1
+                                        // Retour visuel immédiat si activé
+                                        color: isToggledOn ? Qt.alpha(c1, 0.25) : (actionMa.containsMouse ? window.surface1 : window.surface0)
+                                        border.color: isToggledOn ? c1 : (actionMa.containsMouse ? c1 : window.surface2)
+                                        border.width: (actionMa.containsMouse || isToggledOn) ? 2 : 1
+                                        
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                         Behavior on border.color { ColorAnimation { duration: 200 } }
                                         
-                                        scale: actionMa.pressed ? (0.98 - (0.01 * weight)) : (actionMa.containsMouse ? 1.08 : 1.0)
+                                        scale: actionMa.pressed ? (0.98 - (0.01 * model.sysWeight)) : (actionMa.containsMouse ? 1.08 : 1.0)
                                         Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
 
                                         property real fillLevel: 0.0
@@ -1494,8 +1477,8 @@ Item {
                                             anchors.centerIn: parent
                                             font.family: "Iosevka Nerd Font"
                                             font.pixelSize: window.s(24)
-                                            color: actionMa.containsMouse ? window.text : window.subtext0
-                                            text: icon
+                                            color: isToggledOn ? c1 : (actionMa.containsMouse ? window.text : window.subtext0)
+                                            text: model.sysIcon
                                             Behavior on color { ColorAnimation { duration: 150 } }
                                         }
 
@@ -1510,7 +1493,7 @@ Item {
                                                 font.family: "Iosevka Nerd Font"
                                                 font.pixelSize: window.s(24)
                                                 color: window.crust
-                                                text: icon 
+                                                text: model.sysIcon 
                                             }
                                         }
 
@@ -1520,14 +1503,23 @@ Item {
                                             hoverEnabled: true
                                             cursorShape: actionCapsule.triggered ? Qt.ArrowCursor : Qt.PointingHandCursor
                                             
+                                            // Action IMMÉDIATE au clic pour Caffeine
+                                            onClicked: {
+                                                if (model.isToggle) {
+                                                    Quickshell.execDetached(["bash", "-c", actionCapsule.boundCmd]);
+                                                    window.caffeineActive = !window.caffeineActive;
+                                                }
+                                            }
+                                            
+                                            // Animation d'eau uniquement pour les autres boutons
                                             onPressed: { 
-                                                if (!actionCapsule.triggered) { 
+                                                if (!model.isToggle && !actionCapsule.triggered) { 
                                                     drainAnim.stop(); 
                                                     fillAnim.start(); 
                                                 }
                                             }
                                             onReleased: {
-                                                if (!actionCapsule.triggered && actionCapsule.fillLevel < 1.0) { 
+                                                if (!model.isToggle && !actionCapsule.triggered && actionCapsule.fillLevel < 1.0) { 
                                                     fillAnim.stop(); 
                                                     drainAnim.start(); 
                                                 }
@@ -1536,10 +1528,14 @@ Item {
 
                                         NumberAnimation {
                                             id: fillAnim; target: actionCapsule; property: "fillLevel"; to: 1.0
-                                            duration: (550 * weight) * (1.0 - actionCapsule.fillLevel); easing.type: Easing.InSine
+                                            duration: (550 * model.sysWeight) * (1.0 - actionCapsule.fillLevel); easing.type: Easing.InSine
                                             onFinished: {
-                                                actionCapsule.triggered = true; actionCapsule.flashOpacity = 0.6; cardFlashAnim.start();
-                                                exitAnim.start(); exitTimer.start(); // Start graceful exit sequence
+                                                actionCapsule.triggered = true; 
+                                                actionCapsule.flashOpacity = 0.6; 
+                                                cardFlashAnim.start();
+                                                
+                                                exitAnim.start(); 
+                                                exitTimer.start();
                                             }
                                         }
                                         
@@ -1550,14 +1546,18 @@ Item {
 
                                         Timer {
                                             id: exitTimer; interval: 500 
-                                            onTriggered: { Quickshell.execDetached(["sh", "-c", cmd]); Quickshell.execDetached(["sh", "-c", "echo 'close' > " + paths.runDir + "/widget_state"]); }
+                                            onTriggered: { 
+                                                Quickshell.execDetached(["bash", "-c", actionCapsule.boundCmd]); 
+                                                Quickshell.execDetached(["bash", "-c", "echo 'close' > " + paths.runDir + "/widget_state"]); 
+                                            }
                                         }
                                     }
                                 }
                             }
-
-                            // 3. POWER PROFILES DOCK
+                            
+                            // 3. POWER PROFILES DOCK (Hidden on desktop)
                             Rectangle {
+                                visible: !window.isDesktop
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: window.s(54)
                                 radius: window.s(14)

@@ -31,6 +31,7 @@ in
     wofi
     hyprshot
     quickshell
+    hypridle
     # External script dependencies
     rofi pavucontrol fortune wl-screenrec alsa-utils swww networkmanager_dmenu
     wl-clipboard fd qt6.qtmultimedia qt6.qt5compat qt6.qtwebsockets qt6.qtwebengine
@@ -74,11 +75,28 @@ in
       bind = SHIFT, Print, exec, hyprshot -m window --clipboard-only
       bind = CTRL, Print, exec, hyprshot -m output --clipboard-only
       
-      # 2. Native workspace navigation (AZERTY)
-      bind = SUPER, ampersand, workspace, 1
-      bind = SUPER, eacute, workspace, 2
-      bind = SUPER, quotedbl, workspace, 3
-      bind = SUPER, apostrophe, workspace, 4
+      # 2. Window management and workspace navigation (Keycodes)
+      # Switch workspaces (SUPER + 1,2,3,4)
+      bind = SUPER, code:10, workspace, 1
+      bind = SUPER, code:11, workspace, 2
+      bind = SUPER, code:12, workspace, 3
+      bind = SUPER, code:13, workspace, 4
+
+      # Move active window to workspace (SUPER + SHIFT + 1,2,3,4)
+      bind = SUPER SHIFT, code:10, movetoworkspace, 1
+      bind = SUPER SHIFT, code:11, movetoworkspace, 2
+      bind = SUPER SHIFT, code:12, movetoworkspace, 3
+      bind = SUPER SHIFT, code:13, movetoworkspace, 4
+
+      # Move active window within current workspace (SUPER + SHIFT + Arrows)
+      bind = SUPER SHIFT, left, movewindow, l
+      bind = SUPER SHIFT, right, movewindow, r
+      bind = SUPER SHIFT, up, movewindow, u
+      bind = SUPER SHIFT, down, movewindow, d
+
+      # Move/Resize windows with mouse
+      bindm = SUPER, mouse:272, movewindow
+      bindm = SUPER, mouse:273, resizewindow
 
       # 3. Dynamic injected bindings
       ${dynamicBindsText}
