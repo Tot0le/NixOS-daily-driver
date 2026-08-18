@@ -208,7 +208,7 @@ Item {
             "batStat=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1); echo \"${batStat:-Unknown}\"; " +
             "powerprofilesctl get 2>/dev/null || echo 'balanced'; " +
             "awk '{print int($1/3600)\"h \"int(($1%3600)/60)\"m\"}' /proc/uptime 2>/dev/null || echo '0h 0m'; " +
-            "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3==\"[MUTED]\"?\"off\":\"on\")}' || echo '0 on'; " +
+            "LC_ALL=C wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3==\"[MUTED]\"?\"off\":\"on\")}' || echo '0 on'; " +
             "brightnessctl -m 2>/dev/null | awk -F, '{print substr($4, 1, length($4)-1)}' || echo '0'"
         ]
         running: true
@@ -1249,7 +1249,10 @@ Item {
                                                 cursorShape: Qt.PointingHandCursor
                                                 onPressed: (mouse) => { briSyncDelay.stop(); window.isDraggingBri = true; updateBri(mouse.x); }
                                                 onPositionChanged: (mouse) => { if (pressed) updateBri(mouse.x); }
-                                                onReleased: { briSyncDelay.restart(); }
+                                                onReleased: (mouse) => { 
+                                                    updateBri(mouse.x);
+                                                    briSyncDelay.restart(); 
+                                                }
                                                 
                                                 function updateBri(mx) {
                                                     let pct = Math.max(0, Math.min(100, Math.round((mx / width) * 100)));
@@ -1348,7 +1351,11 @@ Item {
                                                 cursorShape: Qt.PointingHandCursor
                                                 onPressed: (mouse) => { volSyncDelay.stop(); window.isDraggingVol = true; updateVol(mouse.x); }
                                                 onPositionChanged: (mouse) => { if (pressed) updateVol(mouse.x); }
-                                                onReleased: { volSyncDelay.restart(); }
+                                                onReleased: (mouse) => { 
+                                                    updateVol(mouse.x);
+                                                    volSyncDelay.restart(); 
+                                                    Quickshell.execDetached(["bash", "-c", "sleep 0.2 && echo 1 > /tmp/qs_audio_force"]);
+                                                }
                                                 
                                                 function updateVol(mx) {
                                                     let pct = Math.max(0, Math.min(100, Math.round((mx / width) * 100)));

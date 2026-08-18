@@ -443,28 +443,65 @@ Variants {
             Process { id: kbWaiter; command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/kb_wait.sh"]; onExited: { kbPoller.running = false; kbPoller.running = true; } }
 
             Process {
-                id: audioPoller; running: true
-                command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/audio_fetch.sh"]
+                id: audioPoller
+                running: false
+                command: ["bash", "-c", "python3 ~/.config/hypr/scripts/quickshell/volume/get_audio_state.py"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
                         if (txt !== "") {
                             try {
                                 let data = JSON.parse(txt);
-                                let newVol = data.volume.toString() + "%";
-                                if (barWindow.volPercent !== newVol) barWindow.volPercent = newVol;
-                                if (barWindow.volIcon !== data.icon) barWindow.volIcon = data.icon;
-                                let newMuted = (data.is_muted === "true");
-                                if (barWindow.isMuted !== newMuted) barWindow.isMuted = newMuted;
+                                let outputs = data.outputs || [];
+                                let defaultSink = null;
+                                
+                                // Find the active default audio sink
+                                for (let i = 0; i < outputs.length; i++) {
+                                    if (outputs[i].is_default) { 
+                                        defaultSink = outputs[i]; 
+                                        break; 
+                                    }
+                                }
+                                // Fallback if no default is explicitly flagged
+                                if (!defaultSink && outputs.length > 0) {
+                                    defaultSink = outputs[0];
+                                }
+                                
+                                if (defaultSink) {
+                                    let currentVol = defaultSink.volume;
+                                    let isMuted = defaultSink.mute;
+                                    let newVolStr = currentVol.toString() + "%";
+                                    
+                                    // Determine appropriate Nerd Font icon based on volume level
+                                    let volIconStr = "󰝟";
+                                    if (!isMuted) {
+                                        if (currentVol >= 70) volIconStr = "󰕾";
+                                        else if (currentVol >= 30) volIconStr = "󰖀";
+                                        else if (currentVol > 0) volIconStr = "󰕿";
+                                    }
+                                    
+                                    // Apply values to the TopBar UI
+                                    if (barWindow.volPercent !== newVolStr) barWindow.volPercent = newVolStr;
+                                    if (barWindow.volIcon !== volIconStr) barWindow.volIcon = volIconStr;
+                                    if (barWindow.isMuted !== isMuted) barWindow.isMuted = isMuted;
+                                }
                             } catch(e) {}
                         }
-                        audioWaiter.running = false;
-                        audioWaiter.running = true;
                     }
                 }
             }
-            Process { id: audioWaiter; command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/audio_wait.sh"]; onExited: { audioPoller.running = false; audioPoller.running = true; } }
 
+            Timer {
+                interval: 500
+                running: true
+                repeat: true
+                triggeredOnStart: true
+                onTriggered: {
+                    audioPoller.running = false;
+                    audioPoller.running = true;
+                }
+            }
+            
             Process {
                 id: networkPoller; running: true
                 command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/network_fetch.sh"]
