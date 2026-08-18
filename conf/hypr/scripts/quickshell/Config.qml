@@ -118,7 +118,7 @@ Item {
         // Apply layout dynamically and persist to local sandbox
         let applyLayout = "hyprctl keyword input:kb_layout '" + config.language + "'";
         let applyOptions = "hyprctl keyword input:kb_options '" + config.kbOptions + "'";
-        let persistLocal = "echo -e 'input {\\n    kb_layout = " + config.language + "\\n    kb_options = " + config.kbOptions + "\\n}' > ~/.config/hypr/local.conf";
+        let persistLocal = "echo -e 'input {\\n    kb_layout = " + config.language + "\\n    kb_options = " + config.kbOptions + "\\n    numlock_by_default = true\\n}' > ~/.config/hypr/local.conf";
         
         sh(applyLayout + " ; " + applyOptions + " ; " + persistLocal);
         

@@ -8,6 +8,7 @@
     browser  = [ "Browser" "firefox" "<Super>f" ];
     explorer = [ "Explorer" "nautilus" "<Super>e" ];
     launcher = [ "App Launcher" "~/.config/hypr/scripts/qs_manager.sh toggle applauncher" "<Super>r" ];
+    lock     = [ "Lock Screen" "~/.config/hypr/scripts/lock.sh" "<Super>l" ];
   };
 
   # Tools for advanced terminal environments (Kitty, etc.)
