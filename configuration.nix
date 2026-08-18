@@ -32,6 +32,7 @@ in
     ./modules/monitoring.nix
     ./modules/docker.nix
     #./modules/virtualization.nix
+    #./modules/corsair.nix
   ];
 
   # Global arguments for modules

@@ -9,6 +9,15 @@
     explorer = [ "Explorer" "nautilus" "<Super>e" ];
     launcher = [ "App Launcher" "~/.config/hypr/scripts/qs_manager.sh toggle applauncher" "<Super>r" ];
     lock     = [ "Lock Screen" "~/.config/hypr/scripts/lock.sh" "<Super>l" ];
+    
+    # Hardware media controls
+    volUp    = [ "Volume Up" "pamixer -i 5" ", XF86AudioRaiseVolume" ];
+    volDown  = [ "Volume Down" "pamixer -d 5" ", XF86AudioLowerVolume" ];
+    mute     = [ "Mute" "pamixer -t" ", XF86AudioMute" ];
+    play     = [ "Play/Pause" "playerctl play-pause" ", XF86AudioPlay" ];
+    next     = [ "Next Track" "playerctl next" ", XF86AudioNext" ];
+    prev     = [ "Previous Track" "playerctl previous" ", XF86AudioPrev" ];
+    stop     = [ "Stop Track" "playerctl stop" ", XF86AudioStop" ];
   };
 
   # Tools for advanced terminal environments (Kitty, etc.)
