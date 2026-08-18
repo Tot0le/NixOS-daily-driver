@@ -17,7 +17,7 @@ Item {
     readonly property string cacheDir: paths.cacheDir
     
     readonly property string settingsJsonPath: hyprDir + "/settings.json"
-    readonly property string weatherEnvPath: qsScriptsDir + "/calendar/.env"
+    readonly property string weatherEnvPath: paths.getStateDir("weather") + "/weather.env"
 
     // State Tracking
     property bool dataReady: false
