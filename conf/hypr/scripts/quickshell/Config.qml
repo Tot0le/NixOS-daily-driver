@@ -44,6 +44,7 @@ Item {
         if (typeof value === "object") safeValue = JSON.stringify(value).replace(/'/g, "'\\''");
 
         let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
+                  `exec 200>'${settingsJsonPath}.lock'; flock 200; ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
                   `jq '. + {"${key}": ${safeValue}}' '${settingsJsonPath}' > '${settingsJsonPath}.tmp' && ` +
                   `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}'`;
@@ -53,6 +54,7 @@ Item {
     function updateJsonBulk(dataObj) {
         let jsonStr = JSON.stringify(dataObj).replace(/'/g, "'\\''");
         let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
+                  `exec 200>'${settingsJsonPath}.lock'; flock 200; ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
                   `jq '. + ${jsonStr}' '${settingsJsonPath}' > '${settingsJsonPath}.tmp' && ` +
                   `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}'`;

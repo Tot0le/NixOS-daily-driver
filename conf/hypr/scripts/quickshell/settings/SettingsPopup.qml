@@ -982,7 +982,7 @@ Item {
             for (let m of modes) {
                 if (m.startsWith(prefix)) {
                     let r = parseFloat(m.slice(prefix.length).replace("Hz", ""));
-                    let key = r.toFixed(2);
+                    let key = Math.round(r).toString();
                     if (!isNaN(r) && !seen[key]) { seen[key] = true; rates.push(r); }
                 }
             }
