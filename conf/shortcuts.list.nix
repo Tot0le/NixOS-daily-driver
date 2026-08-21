@@ -18,6 +18,17 @@
     next     = [ "Next Track" "playerctl next" ", XF86AudioNext" ];
     prev     = [ "Previous Track" "playerctl previous" ", XF86AudioPrev" ];
     stop     = [ "Stop Track" "playerctl stop" ", XF86AudioStop" ];
+
+    # Quickshell UI toggles
+    togglePerf      = [ "Toggle Performance" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 1" "<Super>a" ];
+    toggleDraw      = [ "Toggle Draw" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 0" "<Super>d" ];
+    toggleTimer     = [ "Toggle Timer" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 2" "<Super>u" ];
+    toggleCalendar  = [ "Toggle Calendar" "~/.config/hypr/scripts/qs_manager.sh toggle calendar" "<Super>p" ];
+    toggleClipboard = [ "Toggle Clipboard" "~/.config/hypr/scripts/qs_manager.sh toggle clipboard" "<Super>y" ];
+    toggleNetwork   = [ "Toggle Network" "~/.config/hypr/scripts/qs_manager.sh toggle network" "<Super>n" ];
+    toggleVolume    = [ "Toggle Volume" "~/.config/hypr/scripts/qs_manager.sh toggle volume" "<Super>v" ];
+    toggleWallpaper = [ "Toggle Wallpaper" "~/.config/hypr/scripts/qs_manager.sh toggle wallpaper" "<Super>w" ];
+    toggleMusic     = [ "Toggle Music Player" "~/.config/hypr/scripts/qs_manager.sh toggle music" "<Super>o" ];
   };
 
   # Tools for advanced terminal environments (Kitty, etc.)

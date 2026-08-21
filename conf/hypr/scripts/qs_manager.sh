@@ -173,6 +173,12 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
         exit 0
     fi
 
+    if [[ "$TARGET" == "dashboard" ]]
+    then
+        quickshell -p "$SHELL_QML_PATH" ipc call floating handleDashboard "$ACTION" "$SUBTARGET" >/dev/null 2>&1
+        exit 0
+    fi
+
     if [[ "$TARGET" == "wallpaper" ]]; then
         handle_wallpaper_prep
         CURRENT_SRC=""

@@ -33,7 +33,7 @@ in
     quickshell
     hypridle
     # External script dependencies
-    rofi pavucontrol fortune wl-screenrec alsa-utils swww networkmanager_dmenu
+    rofi pavucontrol fortune wl-screenrec alsa-utils awww networkmanager_dmenu
     wl-clipboard fd qt6.qtmultimedia qt6.qt5compat qt6.qtwebsockets qt6.qtwebengine
     ripgrep gtk3 cava cliphist tree jq socat pamixer brightnessctl acpi iw bluez
     networkmanager lm_sensors bc pulseaudio ladspaPlugins ladspa-sdk imagemagick
@@ -45,6 +45,13 @@ in
     # Fonts for Quickshell UI
     nerd-fonts.iosevka
     nerd-fonts.jetbrains-mono
+
+    # Hyprland wallpaper dependencies
+    imagemagick
+    ffmpeg
+    awww
+    mpvpaper
+    matugen
   ];
 
   # Abort the build if duplicate shortcut bindings are detected

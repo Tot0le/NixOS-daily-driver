@@ -283,7 +283,7 @@ Item {
             let jsonArr = [{ name: m.name, resW: m.resW, resH: m.resH, rate: m.rate, x: 0, y: 0, scale: m.sysScale, transform: m.transform }];
             config.setSetting("monitors", jsonArr);
             config.syncLocalConf(jsonArr);
-            config.sh("hyprctl keyword monitor " + monitorStr + " ; swww kill ; sleep 0.2 ; swww-daemon &");
+            config.sh("hyprctl keyword monitor " + monitorStr + " ; awww kill ; sleep 0.2 ; awww-daemon &");
             Quickshell.execDetached(["notify-send", "Display Update", "Applied: " + m.resW + "x" + m.resH + " @ " + m.rate + "Hz"]);
         } else {
             let rects = [];
@@ -334,7 +334,7 @@ Item {
             }
             config.setSetting("monitors", jsonArr);
             config.syncLocalConf(jsonArr);
-            config.sh("hyprctl --batch '" + batchCmds.join(" ; ") + "' ; swww kill ; sleep 0.2 ; swww-daemon &");
+            config.sh("hyprctl --batch '" + batchCmds.join(" ; ") + "' ; awww kill ; sleep 0.2 ; awww-daemon &");
             Quickshell.execDetached(["notify-send", "Display Update", "Applied layout for: " + summaryString.trim()]);
         }
     }

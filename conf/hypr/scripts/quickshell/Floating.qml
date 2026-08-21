@@ -47,6 +47,7 @@ Variants {
             // =========================================================
             property bool isPinned: false 
             property bool useGraceTimer: false // Tracks if the 3s drag grace period is active
+            property bool isKeyboardOpened: false // Grants 10s grace period for keyboard invocation
             
             onIsPinnedChanged: {
                 if (!isPinned) kickTimer();
@@ -80,6 +81,45 @@ Variants {
 
                 function forceReload() {
                     Quickshell.reload(true) 
+                }
+
+                // Handle custom dashboard routing
+                function handleDashboard(cmd: string, arg: string): void {
+                    let newIdx = parseInt(arg);
+                    let isFullyOpen = floatingWidget.isSidebarVisible && floatingWidget.isExpanded;
+                    let isSameTab = isNaN(newIdx) || floatingWidget.activeIndex === newIdx;
+                    
+                    if (cmd === "toggle" && isFullyOpen && isSameTab) {
+                        floatingWidget.isExpanded = false;
+                        floatingWidget.isSidebarVisible = false;
+                    } else {
+                        floatingWidget.isKeyboardOpened = true;
+                        if (!isNaN(newIdx) && newIdx >= 0 && newIdx < floatingWidget.tabCount) {
+                            floatingWidget.activeIndex = newIdx;
+                        }
+                        floatingWidget.showSidebar("left", floatingWidget.height / 2);
+                        floatingWidget.isExpanded = true;
+                    }
+                }
+            }
+
+            // Add custom shortcut support to open specific tabs
+            function handleCommand(cmd: string, arg: string) {
+                if (cmd === "toggle" || cmd === "open") {
+                    let idx = parseInt(arg);
+                    let isFullyOpen = floatingWidget.isSidebarVisible && floatingWidget.isExpanded;
+                    let isSameTab = isNaN(idx) || floatingWidget.activeIndex === idx;
+                    
+                    if (cmd === "toggle" && isFullyOpen && isSameTab) {
+                        floatingWidget.isExpanded = false;
+                        floatingWidget.isSidebarVisible = false;
+                    } else {
+                        if (!isNaN(idx) && idx >= 0 && idx < floatingWidget.tabCount) {
+                            floatingWidget.activeIndex = idx;
+                            }
+                        floatingWidget.showSidebar("left", floatingWidget.height / 2)
+                        floatingWidget.isExpanded = true;
+                    }
                 }
             }
 
@@ -528,7 +568,7 @@ Variants {
 
             Timer {
                 id: hideTimer
-                interval: floatingWidget.useGraceTimer ? 3000 : 800 // 3 seconds if drag was just happening, else 800ms
+                interval: floatingWidget.isKeyboardOpened ? 10000 : (floatingWidget.useGraceTimer ? 3000 : 800)
                 onTriggered: {
                     if (floatingWidget.isPinned) return;
 
@@ -542,6 +582,7 @@ Variants {
                     floatingWidget.isExpanded = false;
                     floatingWidget.isSidebarVisible = false;
                     floatingWidget.useGraceTimer = false; // Reset grace state when finally hidden
+                    floatingWidget.isKeyboardOpened = false;
                 }
             }
 
@@ -815,6 +856,7 @@ Variants {
                         onHoveredChanged: {
                             if (hovered) {
                                 floatingWidget.useGraceTimer = false; // Reset grace period safely if they returned
+                                floatingWidget.isKeyboardOpened = false;
                                 hideTimer.stop();
                             } else {
                                 floatingWidget.kickTimer();
