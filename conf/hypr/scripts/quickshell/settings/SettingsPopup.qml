@@ -981,8 +981,9 @@ Item {
             let prefix = Math.round(mon.resW) + "x" + Math.round(mon.resH) + "@";
             for (let m of modes) {
                 if (m.startsWith(prefix)) {
-                    let r = Math.round(parseFloat(m.slice(prefix.length).replace("Hz", "")));
-                    if (!isNaN(r) && !seen[r]) { seen[r] = true; rates.push(r); }
+                    let r = parseFloat(m.slice(prefix.length).replace("Hz", ""));
+                    let key = r.toFixed(2);
+                    if (!isNaN(r) && !seen[key]) { seen[key] = true; rates.push(r); }
                 }
             }
             rates.sort((a,b) => a-b);
@@ -4350,7 +4351,7 @@ Item {
                                     Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: root.s(1); height: root.s(3); color: rateSlider.curIdx === index ? root.monSelectedRateAccent : root.overlay0 }
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter; y: root.s(4)
-                                        text: rateSlider.rates[index]
+                                        text: Math.round(rateSlider.rates[index])
                                         font.family: "JetBrains Mono"; font.pixelSize: root.s(8)
                                         font.weight: rateSlider.curIdx === index ? Font.Bold : Font.Normal
                                         color: rateSlider.curIdx === index ? root.monSelectedRateAccent : root.overlay0
@@ -4365,7 +4366,7 @@ Item {
                                     let pct = (mx - rateSlider.tLeft) / rateSlider.tW;
                                     pct = Math.max(0, Math.min(1, pct));
                                     let idx = Math.round(pct * (rateSlider.numRates - 1));
-                                    Config.monitorsModel.setProperty(Config.monActiveEditIndex, "rate", rateSlider.rates[idx].toString());
+                                    Config.monitorsModel.setProperty(Config.monActiveEditIndex, "rate", rateSlider.rates[idx].toFixed(2));
                                     root.monChangeTrigger++;
                                 }
                                 onPressed: (mouse) => doSnap(mouse.x)

@@ -103,25 +103,71 @@ Item {
     // =========================================================================
     // Settings Save Functions
     // =========================================================================
+
+    // Centralize persistence for Hyprland rules (Keyboard + Monitors)
+    function syncLocalConf(newMonitors, newLang, newOpts) {
+        let savedLang = newLang !== undefined ? newLang : config.getSetting("language", "us");
+        let savedOpts = newOpts !== undefined ? newOpts : config.getSetting("kbOptions", "");
+        
+        let safeLang = (savedLang && savedLang !== "") ? savedLang : "us";
+        let kbOpt = (savedOpts && savedOpts !== "") ? "\\n    kb_options = " + savedOpts : "";
+        let confStr = "input {\\n    kb_layout = " + safeLang + kbOpt + "\\n    numlock_by_default = true\\n}\\n";
+
+        let mArr = newMonitors !== undefined ? newMonitors : config.getSetting("monitors", []);
+
+        // Safety net: if we have no reliable monitor data, don't wipe out
+        // whatever monitor= lines are already on disk.
+        if (mArr.length === 0) {
+            config.sh(
+                "grep '^monitor=' ~/.config/hypr/local.conf 2>/dev/null > /tmp/.mon.bak; " +
+                "echo -e '" + confStr + "' > ~/.config/hypr/local.conf; " +
+                "cat /tmp/.mon.bak >> ~/.config/hypr/local.conf 2>/dev/null"
+            );
+            return;
+        }
+
+        for (let i = 0; i < mArr.length; i++) {
+            let m = mArr[i];
+            let mStr = m.name + "," + m.resW + "x" + m.resH + "@" + m.rate + "," + m.x + "x" + m.y + "," + m.scale;
+            if (m.transform !== 0 && m.transform !== undefined) mStr += ",transform," + m.transform;
+            confStr += "monitor=" + mStr + "\\n";
+        }
+        config.sh("echo -e '" + confStr + "' > ~/.config/hypr/local.conf");
+    }
+
     function saveAppSettings() {
-        let configObj = {
-            "uiScale": config.uiScale,
-            "openGuideAtStartup": config.openGuideAtStartup,
-            "topbarHelpIcon": config.topbarHelpIcon,
-            "wallpaperDir": config.wallpaperDir,
-            "language": config.language,
-            "kbOptions": config.kbOptions,
-            "workspaceCount": config.workspaceCount
-        };
+        if (!config.dataReady) {
+            sh("notify-send 'Quickshell' 'Settings not loaded yet, try again in a second'");
+            return;
+        }
+
+        // Fetch existing settings to prevent wiping when fields are empty
+        let currentLang = config.getSetting("language", "us");
+        let currentOpts = config.getSetting("kbOptions", "");
+        
+        let finalLang = (config.language && config.language.toString().trim() !== "") ? config.language : currentLang;
+        let finalOpts = (config.kbOptions && config.kbOptions.toString().trim() !== "") ? config.kbOptions : currentOpts;
+
+        // Update UI to display language chips instantly
+        config.language = finalLang;
+        config.kbOptions = finalOpts;
+
+        // Perform atomic save to prevent async JSON corruption
+        let configObj = { "uiScale": config.uiScale, "monUiScale": config.monUiScale, "language": finalLang, "kbOptions": finalOpts, "workspaceCount": config.workspaceCount };
         config.updateJsonBulk(configObj);
+
+        // Cache monitor configuration before disk write
+        let currentMonitors = config.getSetting("monitors", []);
+
+        // Persist keyboard and monitor settings to local config
+        config.syncLocalConf(currentMonitors, finalLang, finalOpts);
+
+        // Apply keyboard layout dynamically
+        let applyLayout = "hyprctl keyword input:kb_layout '" + finalLang + "'";
+        let applyOptions = "hyprctl keyword input:kb_options '" + finalOpts + "'";
         
-        // Apply layout dynamically and persist to local sandbox
-        let applyLayout = "hyprctl keyword input:kb_layout '" + config.language + "'";
-        let applyOptions = "hyprctl keyword input:kb_options '" + config.kbOptions + "'";
-        let persistLocal = "echo -e 'input {\\n    kb_layout = " + config.language + "\\n    kb_options = " + config.kbOptions + "\\n    numlock_by_default = true\\n}' > ~/.config/hypr/local.conf";
-        
-        sh(applyLayout + " ; " + applyOptions + " ; " + persistLocal);
-        
+        config.sh(applyLayout + " ; " + applyOptions);
+
         sh("notify-send 'Quickshell' 'Settings Applied Successfully!'");
         
         if (config.workspaceCount !== config.initialWorkspaceCount) {
@@ -232,8 +278,9 @@ Item {
             let m = monitorsModel.get(0);
             let monitorStr = m.name + "," + m.resW + "x" + m.resH + "@" + m.rate + ",0x0," + m.sysScale;
             if (m.transform !== 0) monitorStr += ",transform," + m.transform;
-            let jsonArr = [{ name: m.name, resW: m.resW, resH: m.resH, rate: parseInt(m.rate), x: 0, y: 0, scale: m.sysScale, transform: m.transform }];
+            let jsonArr = [{ name: m.name, resW: m.resW, resH: m.resH, rate: m.rate, x: 0, y: 0, scale: m.sysScale, transform: m.transform }];
             config.setSetting("monitors", jsonArr);
+            config.syncLocalConf(jsonArr);
             config.sh("hyprctl keyword monitor " + monitorStr + " ; swww kill ; sleep 0.2 ; swww-daemon &");
             Quickshell.execDetached(["notify-send", "Display Update", "Applied: " + m.resW + "x" + m.resH + " @ " + m.rate + "Hz"]);
         } else {
@@ -281,9 +328,10 @@ Item {
                 if (r.transform !== 0) monitorStr += ",transform," + r.transform;
                 batchCmds.push("keyword monitor " + monitorStr);
                 summaryString += r.name + " ";
-                jsonArr.push({ name: r.name, resW: r.resW, resH: r.resH, rate: parseInt(r.rate), x: r.x, y: r.y, scale: r.sysScale, transform: r.transform });
+                jsonArr.push({ name: r.name, resW: r.resW, resH: r.resH, rate: r.rate, x: r.x, y: r.y, scale: r.sysScale, transform: r.transform });
             }
             config.setSetting("monitors", jsonArr);
+            config.syncLocalConf(jsonArr);
             config.sh("hyprctl --batch '" + batchCmds.join(" ; ") + "' ; swww kill ; sleep 0.2 ; swww-daemon &");
             Quickshell.execDetached(["notify-send", "Display Update", "Applied layout for: " + summaryString.trim()]);
         }
@@ -320,7 +368,7 @@ Item {
                         let normalizedY = (data[i].y - minY) * config.monUiScale;
                         config.monitorsModel.append({
                             name: data[i].name, resW: data[i].width, resH: data[i].height,
-                            sysScale: scl, rate: Math.round(data[i].refreshRate).toString(),
+                            sysScale: scl, rate: Number(data[i].refreshRate).toFixed(2),
                             uiX: normalizedX, uiY: normalizedY, transform: tf,
                             availableModes: JSON.stringify(data[i].availableModes || [])
                         });

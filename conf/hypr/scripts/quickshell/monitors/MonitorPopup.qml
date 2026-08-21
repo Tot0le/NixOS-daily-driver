@@ -347,10 +347,11 @@ Item {
                             resW: data[i].width,
                             resH: data[i].height,
                             sysScale: scl,
-                            rate: Math.round(data[i].refreshRate).toString(),
+                            rate: Number(data[i].refreshRate).toFixed(2),
                             uiX: normalizedX,
                             uiY: normalizedY,
-                            transform: tf
+                            transform: tf,
+                            availableModes: JSON.stringify(data[i].availableModes || [])
                         });
 
                         if (data[i].focused) window.activeEditIndex = i;
@@ -723,7 +724,7 @@ Item {
                                             font.family: "JetBrains Mono"
                                             font.pixelSize: window.s(12)
                                             color: window.subtext0
-                                            text: window.currentSimW + "x" + window.currentSimH + " @ " + (monitorsModel.count > 0 ? monitorsModel.get(0).rate : "60") + "Hz" 
+                                            text: window.currentSimW + "x" + window.currentSimH + " @ " + (monitorsModel.count > 0 ? Math.round(monitorsModel.get(0).rate) : "60") + "Hz"
                                         }
                                     }
                                 }
@@ -1239,7 +1240,24 @@ Item {
                         Layout.leftMargin: window.s(6)
                         Layout.rightMargin: window.s(6)
                         
-                        property var rates: [60, 75, 100, 120, 144, 165, 180, 240, 360]
+                        property var rates: {
+                            if (monitorsModel.count === 0) return [60];
+                            try {
+                                let mon = monitorsModel.get(window.activeEditIndex);
+                                let modes = JSON.parse(mon.availableModes || "[]");
+                                let prefix = Math.round(mon.resW) + "x" + Math.round(mon.resH) + "@";
+                                let seen = {}, list = [];
+                                for (let m of modes) {
+                                    if (m.startsWith(prefix)) {
+                                        let r = parseFloat(m.slice(prefix.length).replace("Hz", ""));
+                                        let key = r.toFixed(2);
+                                        if (!isNaN(r) && !seen[key]) { seen[key] = true; list.push(r); }
+                                    }
+                                }
+                                list.sort((a,b) => a-b);
+                                return list.length > 0 ? list : [60];
+                            } catch(e) { return [60]; }
+                        }
                         property var rateColors: [window.red, window.mauve, window.blue, window.sapphire, window.teal, window.pink, window.yellow, window.green, window.peach]
                         
                         property int currentIndex: {
@@ -1266,7 +1284,7 @@ Item {
                         function updateSelectionVisual(idx) {
                             if (monitorsModel.count === 0) return;
                             visualPct = idx / (rates.length - 1);
-                            monitorsModel.setProperty(window.activeEditIndex, "rate", rates[idx].toString());
+                            monitorsModel.setProperty(window.activeEditIndex, "rate", rates[idx].toFixed(2));
                             window.selectedRateAccent = rateColors[idx];
                         }
 
@@ -1352,7 +1370,7 @@ Item {
                                     sliderContainer.visualPct = pct;
                                 }
 
-                                monitorsModel.setProperty(window.activeEditIndex, "rate", sliderContainer.rates[idx].toString());
+                                monitorsModel.setProperty(window.activeEditIndex, "rate", sliderContainer.rates[idx].toFixed(2));
                                 window.selectedRateAccent = sliderContainer.rateColors[idx];
                             }
 
