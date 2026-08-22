@@ -75,7 +75,7 @@ in
       # 1. Failsafe core bindings
       bind = SUPER, Return, exec, kitty
       bind = SUPER, X, killactive
-      bind = SUPER, M, exit
+      bind = SUPER SHIFT, M, exit
 
       # Screenshot utility
       bind = , Print, exec, hyprshot -m region --clipboard-only
@@ -116,6 +116,7 @@ in
       source = ~/.config/hypr/config/variables.conf
       source = ~/.config/hypr/config/settings.conf
       source = ~/.config/hypr/config/rules.conf
+      source = ~/.config/hypr/config/keybindings.conf
 
       # User-specific local overrides
       source = ~/.config/hypr/local.conf
