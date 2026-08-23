@@ -9,6 +9,13 @@
     explorer = [ "Explorer" "nautilus" "<Super>e" ];
     launcher = [ "App Launcher" "~/.config/hypr/scripts/qs_manager.sh toggle applauncher" "<Super>r" ];
     lock     = [ "Lock Screen" "~/.config/hypr/scripts/lock.sh" "<Super>l" ];
+    reload   = [ "Reload Shell" "~/.config/hypr/scripts/reload.sh" "<Super><Shift>r" ];
+    monitors = [ "Toggle Monitors" "~/.config/hypr/scripts/qs_manager.sh toggle monitors" "<Super>m" ];
+    settings = [ "Toggle Settings" "~/.config/hypr/scripts/qs_manager.sh toggle settings" "<Super><Shift>s" ];
+    battery  = [ "Toggle Battery" "~/.config/hypr/scripts/qs_manager.sh toggle battery" "<Super>b" ];
+    focustime = [ "Toggle Focus Time" "~/.config/hypr/scripts/qs_manager.sh toggle focustime" "<Super><Shift>t" ];
+    guide    = [ "Toggle Guide" "~/.config/hypr/scripts/qs_manager.sh toggle guide" "<Super>h" ];
+         
     
     # Hardware media controls
     volUp    = [ "Volume Up" "pamixer -i 5" ", XF86AudioRaiseVolume" ];
@@ -24,9 +31,9 @@
     toggleDraw      = [ "Toggle Draw" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 0" "<Super>d" ];
     toggleTimer     = [ "Toggle Timer" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 2" "<Super>u" ];
     toggleCalendar  = [ "Toggle Calendar" "~/.config/hypr/scripts/qs_manager.sh toggle calendar" "<Super>p" ];
-    toggleClipboard = [ "Toggle Clipboard" "~/.config/hypr/scripts/qs_manager.sh toggle clipboard" "<Super>y" ];
+    toggleClipboard = [ "Toggle Clipboard" "~/.config/hypr/scripts/qs_manager.sh toggle clipboard" "<Super>v" ];
     toggleNetwork   = [ "Toggle Network" "~/.config/hypr/scripts/qs_manager.sh toggle network" "<Super>n" ];
-    toggleVolume    = [ "Toggle Volume" "~/.config/hypr/scripts/qs_manager.sh toggle volume" "<Super>v" ];
+    toggleVolume    = [ "Toggle Volume" "~/.config/hypr/scripts/qs_manager.sh toggle volume" "<Super>y" ];
     toggleWallpaper = [ "Toggle Wallpaper" "~/.config/hypr/scripts/qs_manager.sh toggle wallpaper" "<Super>w" ];
     toggleMusic     = [ "Toggle Music Player" "~/.config/hypr/scripts/qs_manager.sh toggle music" "<Super>o" ];
   };

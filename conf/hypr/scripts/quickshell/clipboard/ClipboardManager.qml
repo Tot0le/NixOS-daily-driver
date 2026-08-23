@@ -125,6 +125,22 @@ Item {
         }
     }
 
+    Process {
+        id: clipWiper
+        running: false
+        command: ["cliphist", "wipe"]
+        onExited: {
+            window.allClips = [];
+            window.currentOffset = 0;
+            window.hasMore = true;
+            window.filterClips(searchInput.text);
+        }
+    }
+
+    function clearClipboardHistory() {
+        clipWiper.running = true;
+    }
+
     ListModel {
         id: clipModel
     }

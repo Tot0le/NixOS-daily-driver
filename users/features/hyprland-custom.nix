@@ -8,7 +8,8 @@ let
   # Convert GNOME binding syntax to Hyprland syntax
   convertBinding = gnomeBind:
     let
-      s1 = builtins.replaceStrings ["<Super>"] ["SUPER, "] gnomeBind;
+      s0 = builtins.replaceStrings ["<Super><Shift>"] ["SUPER SHIFT, "] gnomeBind;
+      s1 = builtins.replaceStrings ["<Super>"] ["SUPER, "] s0;
       s2 = builtins.replaceStrings ["<Ctrl><Shift>"] ["CTRL SHIFT, "] s1;
       s3 = builtins.replaceStrings ["<Ctrl>"] ["CTRL, "] s2;
       s4 = builtins.replaceStrings ["<Shift>"] ["SHIFT, "] s3;
@@ -52,6 +53,12 @@ in
     awww
     mpvpaper
     matugen
+
+    # Screenshot system dependencies
+    gpu-screen-recorder
+    grim
+    satty
+    zbar
   ];
 
   # Abort the build if duplicate shortcut bindings are detected
@@ -76,39 +83,34 @@ in
       bind = SUPER, Return, exec, kitty
       bind = SUPER, X, killactive
       bind = SUPER SHIFT, M, exit
-
-      # Screenshot utility
-      bind = , Print, exec, hyprshot -m region --clipboard-only
-      bind = SHIFT, Print, exec, hyprshot -m window --clipboard-only
-      bind = CTRL, Print, exec, hyprshot -m output --clipboard-only
       
-      # 2. Window management and workspace navigation (Keycodes)
-      # Switch workspaces (SUPER + 1,2,3,4)
-      bind = SUPER, code:10, workspace, 1
-      bind = SUPER, code:11, workspace, 2
-      bind = SUPER, code:12, workspace, 3
-      bind = SUPER, code:13, workspace, 4
+      # Workspace switching by physical keycode (layout-independent — works on AZERTY, QWERTY, etc.)
+      bind = SUPER, code:10, exec, bash ~/.config/hypr/scripts/qs_manager.sh 1
+      bind = SUPER, code:11, exec, bash ~/.config/hypr/scripts/qs_manager.sh 2
+      bind = SUPER, code:12, exec, bash ~/.config/hypr/scripts/qs_manager.sh 3
+      bind = SUPER, code:13, exec, bash ~/.config/hypr/scripts/qs_manager.sh 4
+      bind = SUPER, code:14, exec, bash ~/.config/hypr/scripts/qs_manager.sh 5
+      bind = SUPER, code:15, exec, bash ~/.config/hypr/scripts/qs_manager.sh 6
+      bind = SUPER, code:16, exec, bash ~/.config/hypr/scripts/qs_manager.sh 7
+      bind = SUPER, code:17, exec, bash ~/.config/hypr/scripts/qs_manager.sh 8
+      bind = SUPER, code:18, exec, bash ~/.config/hypr/scripts/qs_manager.sh 9
+      bind = SUPER, code:19, exec, bash ~/.config/hypr/scripts/qs_manager.sh 10
 
-      # Move active window to workspace (SUPER + SHIFT + 1,2,3,4)
-      bind = SUPER SHIFT, code:10, movetoworkspace, 1
-      bind = SUPER SHIFT, code:11, movetoworkspace, 2
-      bind = SUPER SHIFT, code:12, movetoworkspace, 3
-      bind = SUPER SHIFT, code:13, movetoworkspace, 4
+      bind = SUPER SHIFT, code:10, exec, bash ~/.config/hypr/scripts/qs_manager.sh 1 move
+      bind = SUPER SHIFT, code:11, exec, bash ~/.config/hypr/scripts/qs_manager.sh 2 move
+      bind = SUPER SHIFT, code:12, exec, bash ~/.config/hypr/scripts/qs_manager.sh 3 move
+      bind = SUPER SHIFT, code:13, exec, bash ~/.config/hypr/scripts/qs_manager.sh 4 move
+      bind = SUPER SHIFT, code:14, exec, bash ~/.config/hypr/scripts/qs_manager.sh 5 move
+      bind = SUPER SHIFT, code:15, exec, bash ~/.config/hypr/scripts/qs_manager.sh 6 move
+      bind = SUPER SHIFT, code:16, exec, bash ~/.config/hypr/scripts/qs_manager.sh 7 move
+      bind = SUPER SHIFT, code:17, exec, bash ~/.config/hypr/scripts/qs_manager.sh 8 move
+      bind = SUPER SHIFT, code:18, exec, bash ~/.config/hypr/scripts/qs_manager.sh 9 move
+      bind = SUPER SHIFT, code:19, exec, bash ~/.config/hypr/scripts/qs_manager.sh 10 move
 
-      # Move active window within current workspace (SUPER + SHIFT + Arrows)
-      bind = SUPER SHIFT, left, movewindow, l
-      bind = SUPER SHIFT, right, movewindow, r
-      bind = SUPER SHIFT, up, movewindow, u
-      bind = SUPER SHIFT, down, movewindow, d
-
-      # Move/Resize windows with mouse
-      bindm = SUPER, mouse:272, movewindow
-      bindm = SUPER, mouse:273, resizewindow
-
-      # 3. Dynamic injected bindings
+      # 2. Dynamic injected bindings
       ${dynamicBindsText}
 
-      # 4. External modular configuration
+      # 3. External modular configuration
       source = ~/.config/hypr/colors.conf
       source = ~/.config/hypr/config/monitors.conf
       source = ~/.config/hypr/config/env.conf
