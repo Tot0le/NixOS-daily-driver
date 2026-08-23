@@ -36,6 +36,7 @@
     toggleVolume    = [ "Toggle Volume" "~/.config/hypr/scripts/qs_manager.sh toggle volume" "<Super>y" ];
     toggleWallpaper = [ "Toggle Wallpaper" "~/.config/hypr/scripts/qs_manager.sh toggle wallpaper" "<Super>w" ];
     toggleMusic     = [ "Toggle Music Player" "~/.config/hypr/scripts/qs_manager.sh toggle music" "<Super>o" ];
+    toggleMovies    = [ "Toggle Movies" "~/.config/hypr/scripts/qs_manager.sh toggle movies" "<Super>g" ];
   };
 
   # Tools for advanced terminal environments (Kitty, etc.)
