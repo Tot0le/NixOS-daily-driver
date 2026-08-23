@@ -59,6 +59,9 @@ in
     grim
     satty
     zbar
+
+    # Audio equalizer
+    easyeffects
   ];
 
   # Abort the build if duplicate shortcut bindings are detected
