@@ -76,6 +76,7 @@ in
   xdg.configFile."hypr/config".source = ../../conf/hypr/config;
   xdg.configFile."hypr/scripts".source = ../../conf/hypr/scripts;
   xdg.configFile."hypr/colors.conf".source = ../../conf/hypr/colors.conf;
+  xdg.configFile."matugen".source = ../../conf/matugen;
 
   wayland.windowManager.hyprland = {
     enable = true;
