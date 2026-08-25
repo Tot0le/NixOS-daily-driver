@@ -28,6 +28,8 @@ let
   );
 in
 {
+  imports = [ ../../conf/hypr/hypridle.nix ];
+  
   home.packages = with pkgs; [
     wofi
     hyprshot

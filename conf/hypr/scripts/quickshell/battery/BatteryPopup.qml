@@ -1378,7 +1378,7 @@ Item {
                                 Repeater {
                                     model: ListModel {
                                         // We add isToggle: true only for Caffeine
-                                        ListElement { sysCmd: "if [ -f /tmp/caffeine_on ]; then rm /tmp/caffeine_on && hypridle >/dev/null 2>&1 & else touch /tmp/caffeine_on && killall hypridle 2>/dev/null || true; fi"; sysIcon: ""; sysColor: "peach"; sysWeight: 1.0; isToggle: true }
+                                        ListElement { sysCmd: "if [ -f /tmp/caffeine_on ]; then rm /tmp/caffeine_on && systemctl --user start hypridle.service; else touch /tmp/caffeine_on && systemctl --user stop hypridle.service; fi"; sysIcon: ""; sysColor: "peach"; sysWeight: 1.0; isToggle: true }
                                         ListElement { sysCmd: "bash ~/.config/hypr/scripts/lock.sh"; sysIcon: ""; sysColor: "mauve"; sysWeight: 1.0; isToggle: false }
                                         ListElement { sysCmd: "bash ~/.config/hypr/scripts/lock.sh & systemctl suspend"; sysIcon: "ᶻ 𝗓 𝗓"; sysColor: "blue"; sysWeight: 1.0; isToggle: false }
                                         ListElement { sysCmd: "systemctl reboot"; sysIcon: "󰑓"; sysColor: "yellow"; sysWeight: 2.5; isToggle: false }
