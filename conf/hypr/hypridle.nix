@@ -13,10 +13,13 @@
           timeout = 300; 
           on-timeout = "loginctl lock-session";
         }
-        {
-          timeout = 900; 
-          on-timeout = "systemctl suspend";
-        }
+        # Suspend disabled for now — unstable with this AMD A520 XHCI controller,
+        # root cause not fully identified, risk of a hard lock requiring a
+        # forced power-off to recover.
+        # {
+        #   timeout = 900;
+        #   on-timeout = "systemctl suspend";
+        # }
       ];
     };
   };
