@@ -178,6 +178,13 @@ Item {
         }
     }
 
+    Process {
+        id: cloneProcess
+        running: false
+        command: ["bash", "-c", "mkdir -p ~/Pictures/Wallpapers && git clone --depth 1 https://github.com/ilyamiro/shell-wallpapers /tmp/ilyamiro-wp-clone-$$ && cp -n /tmp/ilyamiro-wp-clone-$$/*/* ~/Pictures/Wallpapers/ 2>/dev/null; rm -rf /tmp/ilyamiro-wp-clone-$$; notify-send 'Wallpapers' 'Clone finished'"]
+        onExited: running = false
+    }
+
     // -------------------------------------------------------------------------
     // SYSTEM INFO PROPERTIES & FETCHER (CACHED)
     // -------------------------------------------------------------------------
@@ -941,7 +948,17 @@ Item {
                             
                             Row {
                                 Layout.alignment: Qt.AlignVCenter
-                                spacing: root.s(1)
+                                spacing: root.s(4)
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Hyprland theme by "
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Medium
+                                    font.pixelSize: root.s(14)
+                                    color: root.subtext0
+                                }
+
                                 Repeater {
                                     model: [ { l: "i", c: root.red }, { l: "l", c: root.peach }, { l: "y", c: root.yellow }, { l: "a", c: root.green }, { l: "m", c: root.sapphire }, { l: "i", c: root.blue }, { l: "r", c: root.mauve }, { l: "o", c: root.pink } ]
                                     Text { 
@@ -980,10 +997,97 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: Quickshell.execDetached(["xdg-open", "https://github.com/ilyamiro/nixos-configuration"]) 
+                            onClicked: Quickshell.execDetached(["xdg-open", "https://github.com/ilyamiro"])
                         }
                     }
 
+                    // PORT CREDIT BLOCK
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: root.s(50)
+                        radius: root.s(10)
+                        color: portMa.containsMouse ? Qt.alpha(root.surface1, 0.6) : Qt.alpha(root.surface0, 0.4)
+                        border.color: portMa.containsMouse ? root.mauve : root.surface1
+                        border.width: 1
+                        scale: portMa.pressed ? 0.98 : (portMa.containsMouse ? 1.01 : 1.0)
+                        
+                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                        RowLayout {
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.margins: root.s(12)
+                            spacing: root.s(15)
+                            
+                            Rectangle { 
+                                Layout.alignment: Qt.AlignVCenter
+                                width: root.s(32)
+                                height: root.s(32)
+                                radius: root.s(8)
+                                color: root.surface0
+                                border.color: root.surface2
+                                border.width: 1
+                                Text { anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(20); color: root.text } 
+                            }
+                            
+                            Row {
+                                Layout.alignment: Qt.AlignVCenter
+                                spacing: root.s(4)
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "NixOS Module Architecture & Core Logic by "
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Medium
+                                    font.pixelSize: root.s(14)
+                                    color: root.subtext0
+                                }
+
+                                Repeater {
+                                    model: [ { l: "T", c: "#E60000" }, { l: "o", c: "#FF4500" }, { l: "t", c: "#FF8C00" }, { l: "0", c: "#FFA500" }, { l: "l", c: "#FFD700" }, { l: "e", c: "#FFFF00" } ]
+                                    Text { 
+                                        text: modelData.l
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Black
+                                        font.pixelSize: root.s(14)
+                                        color: modelData.c
+                                        property real hoverOffset: portMa.containsMouse ? root.s(-3) : 0
+                                        transform: Translate { y: hoverOffset }
+                                        Behavior on hoverOffset { NumberAnimation { duration: 300 + (index * 35); easing.type: Easing.OutBack } } 
+                                    }
+                                }
+                            }
+                            
+                            Item { Layout.fillWidth: true }
+                            
+                            Rectangle { 
+                                Layout.alignment: Qt.AlignVCenter
+                                width: root.s(28)
+                                height: root.s(28)
+                                radius: root.s(6)
+                                color: portMa.containsMouse ? root.surface1 : "transparent"
+                                Text { 
+                                    anchors.centerIn: parent
+                                    text: ""
+                                    font.family: "Iosevka Nerd Font"
+                                    font.pixelSize: root.s(14)
+                                    color: authorMa.containsMouse ? root.mauve : root.subtext0
+                                    Behavior on color { ColorAnimation { duration: 150 } } 
+                                } 
+                            }
+                        }
+                        MouseArea { 
+                            id: portMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Quickshell.execDetached(["xdg-open", "https://github.com/Tot0le"])
+                        }
+                    }
+                    
                     // MODULES AND QUICK LINKS ROW
                     RowLayout {
                         Layout.fillWidth: true
@@ -1543,14 +1647,14 @@ Item {
 
                     Repeater {
                         model: [
-                            { name: "NixOS Config", icon: "", color: "blue", url: "https://github.com/ilyamiro/nixos-configuration" },
+                            { name: "NixOS Config", icon: "", color: "blue", url: "https://github.com/Tot0le/NixOS-daily-driver" },
                             { name: "Imperative Dots", icon: "󰣇", color: "mauve", url: "https://github.com/ilyamiro/imperative-dots" },
                             { name: "Wallpapers", icon: "", color: "peach", url: "https://github.com/ilyamiro/shell-wallpapers" }
                         ]
 
                         Rectangle {
                             Layout.preferredWidth: root.s(140)
-                            Layout.preferredHeight: root.s(140)
+                            Layout.preferredHeight: root.s(155)
                             radius: root.s(16)
                             color: repoMa.containsMouse ? Qt.alpha(root[modelData.color], 0.15) : Qt.alpha(root.surface0, 0.4)
                             border.color: repoMa.containsMouse ? root[modelData.color] : root.surface1
@@ -1563,6 +1667,7 @@ Item {
 
                             ColumnLayout {
                                 anchors.centerIn: parent
+                                anchors.verticalCenterOffset: -root.s(6)
                                 spacing: root.s(15)
 
                                 Text {
@@ -1586,10 +1691,57 @@ Item {
                             MouseArea {
                                 id: repoMa
                                 anchors.fill: parent
+                                anchors.bottomMargin: modelData.name === "Wallpapers" ? root.s(32) : 0
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: Quickshell.execDetached(["xdg-open", modelData.url])
                             }
+
+                            Rectangle {
+                                visible: modelData.name === "Wallpapers"
+                                anchors.bottom: parent.bottom
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.margins: root.s(8)
+                                height: root.s(24)
+                                radius: root.s(8)
+                                color: cloneMa.containsMouse ? root.peach : Qt.alpha(root.peach, 0.15)
+                                border.color: root.peach
+                                border.width: 1
+
+                                Behavior on color { ColorAnimation { duration: 150 } }
+
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: root.s(6)
+
+                                    Text {
+                                        text: cloneProcess.running ? "" : ""
+                                        font.family: "Iosevka Nerd Font"
+                                        font.pixelSize: root.s(11)
+                                        color: cloneMa.containsMouse ? root.crust : root.peach
+                                    }
+                                    Text {
+                                        text: cloneProcess.running ? "Cloning..." : "Clone"
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Bold
+                                        font.pixelSize: root.s(10)
+                                        color: cloneMa.containsMouse ? root.crust : root.peach
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: cloneMa
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (cloneProcess.running) return;
+                                        cloneProcess.running = true;
+                                    }
+                                }
+                            }
+
                         }
                     }
                 }

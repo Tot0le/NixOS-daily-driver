@@ -453,6 +453,35 @@ Item {
                         event.accepted = true;
                     }
                 }
+                
+                Rectangle {
+                    Layout.preferredWidth: window.s(30)
+                    Layout.preferredHeight: window.s(30)
+                    radius: window.s(8)
+                    color: clearMa.containsMouse ? Qt.alpha(window.red, 0.15) : "transparent"
+                    border.color: clearMa.containsMouse ? window.red : "transparent"
+                    border.width: 1
+
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "󰃢"
+                        font.family: "Iosevka Nerd Font"
+                        font.pixelSize: window.s(15)
+                        color: clearMa.containsMouse ? window.red : window.subtext0
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                    }
+
+                    MouseArea {
+                        id: clearMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: window.clearClipboardHistory()
+                    }
+                }
             }
         }
 

@@ -1564,7 +1564,7 @@ Item {
                             
                             // 3. POWER PROFILES DOCK (Hidden on desktop)
                             Rectangle {
-                                visible: !window.isDesktop
+                                visible: true
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: window.s(54)
                                 radius: window.s(14)
