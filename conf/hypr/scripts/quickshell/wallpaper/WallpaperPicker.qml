@@ -36,6 +36,7 @@ Item {
     property string searchQuery: ""
     property bool isOnlineSearch: false
     property bool isSearchPaused: false
+    property bool searchBoxOpen: false
     property bool hasSearched: false
     property var colorMap: ({})
     property int cacheVersion: 0 
@@ -471,6 +472,7 @@ Item {
     function triggerOnlineSearch() {
         if (searchInput.text.trim() === "") return;
         
+        window.currentFilter = "Search";
         window.isModelChanging = true;
         searchProxyModel.clear();
         window.lastSearchName = "";
@@ -612,22 +614,35 @@ Item {
         return "Monochrome";
     }
 
+    function matchesSearchQuery(fileName) {
+        let q = window.searchQuery.trim().toLowerCase();
+        if (q === "") return true;
+
+        let clean = window.getCleanName(fileName).toLowerCase();
+        clean = clean.replace(/\.[a-z0-9]+$/, "");   // retire l'extension
+        clean = clean.replace(/[-_.]+/g, " ");        // "autumn-forest" -> "autumn forest"
+
+        let words = q.split(/\s+/).filter(w => w.length > 0);
+        return words.every(w => clean.indexOf(w) !== -1);
+    }
+
     function checkItemMatchesFilter(fileName, isVid, cv, filter) {
         if (filter === "Search") {
             if (window.hasSearched) return true; // résultats DDG déjà téléchargés : on garde tel quel
-            let q = window.searchQuery.trim().toLowerCase();
-            if (q === "") return true;
-            let clean = window.getCleanName(fileName).toLowerCase();
-            return clean.indexOf(q) !== -1;
+            return window.matchesSearchQuery(fileName);
         }
 
-        if (filter === "All") return true;
-        if (filter === "Video") return isVid;
-        
-        let hexColor = window.colorMap[String(fileName)];
-        if (!hexColor) return filter === "Monochrome";
-        
-        return window.getHexBucket(hexColor) === filter;
+        let baseMatch;
+        if (filter === "All") {
+            baseMatch = true;
+        } else if (filter === "Video") {
+            baseMatch = isVid;
+        } else {
+            let hexColor = window.colorMap[String(fileName)];
+            baseMatch = !hexColor ? (filter === "Monochrome") : (window.getHexBucket(hexColor) === filter);
+        }
+
+        return baseMatch && window.matchesSearchQuery(fileName);
     }
 
     FolderListModel {
@@ -889,7 +904,7 @@ Item {
         } 
     }
     
-    Shortcut { sequence: "Escape"; enabled: !window.isApplying; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
+    Shortcut { sequence: "Escape"; enabled: !window.isApplying; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } window.searchBoxOpen = false; } }
     Shortcut { sequence: "Tab"; enabled: !window.isApplying; onActivated: window.cycleFilter(1) }
     Shortcut { sequence: "Backtab"; enabled: !window.isApplying; onActivated: window.cycleFilter(-1) }
 
@@ -1628,14 +1643,14 @@ Item {
             Rectangle {
                 id: searchBox
                 height: window.s(44)
-                width: window.currentFilter === "Search" ? window.s(360) : window.s(44)
+                width: window.searchBoxOpen ? window.s(360) : window.s(44)
                 radius: window.s(10)
                 clip: true
                 anchors.verticalCenter: parent.verticalCenter
                 
-                color: window.currentFilter === "Search" ? Qt.rgba(_theme.surface2.r, _theme.surface2.g, _theme.surface2.b, 0.8) : "transparent"
-                border.color: window.currentFilter === "Search" ? _theme.text : _theme.surface1
-                border.width: window.currentFilter === "Search" ? window.s(2) : 1
+                color: window.searchBoxOpen ? Qt.rgba(_theme.surface2.r, _theme.surface2.g, _theme.surface2.b, 0.8) : "transparent"
+                border.color: window.searchBoxOpen ? _theme.text : _theme.surface1
+                border.width: window.searchBoxOpen ? window.s(2) : 1
                 
                 Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
                 Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
@@ -1648,10 +1663,11 @@ Item {
                     enabled: !window.isApplying
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (window.currentFilter !== "Search") {
-                            window.currentFilter = "Search"
-                        } else {
-                            window.currentFilter = "All"
+                        window.searchBoxOpen = !window.searchBoxOpen;
+                        if (window.searchBoxOpen) {
+                            Qt.callLater(() => searchInput.forceActiveFocus());
+                        } else if (window.currentFilter === "Search") {
+                            window.currentFilter = "All";
                         }
                     }
                 }
@@ -1661,10 +1677,10 @@ Item {
                     width: window.s(44)
                     height: window.s(44)
                     anchors.left: parent.left
-                    anchors.leftMargin: window.currentFilter === "Search" ? window.s(5) : 0
+                    anchors.leftMargin: window.searchBoxOpen ? window.s(5) : 0
                     anchors.verticalCenter: parent.verticalCenter
                     Behavior on anchors.leftMargin { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
-                    property string activeColor: window.currentFilter === "Search" ? _theme.text : (searchMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
+                    property string activeColor: window.searchBoxOpen ? _theme.text : (searchMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
                     onActiveColorChanged: requestPaint()
                     property real scaleTrigger: window.s(1)
                     onScaleTriggerChanged: requestPaint()
@@ -1692,7 +1708,7 @@ Item {
                     anchors.rightMargin: window.s(8)
                     anchors.verticalCenter: parent.verticalCenter
                     
-                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
+                    opacity: window.searchBoxOpen ? 1.0 : 0.0
                     visible: opacity > 0
                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
                     
@@ -1724,7 +1740,7 @@ Item {
                     anchors.rightMargin: window.s(8)
                     anchors.verticalCenter: parent.verticalCenter
                     
-                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
+                    opacity: window.searchBoxOpen ? 1.0 : 0.0
                     visible: opacity > 0
                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
 
