@@ -181,7 +181,7 @@ Item {
     Process {
         id: cloneProcess
         running: false
-        command: ["bash", "-c", "mkdir -p ~/Pictures/Wallpapers && git clone --depth 1 https://github.com/ilyamiro/shell-wallpapers /tmp/ilyamiro-wp-clone-$$ && cp -n /tmp/ilyamiro-wp-clone-$$/*/* ~/Pictures/Wallpapers/ 2>/dev/null; rm -rf /tmp/ilyamiro-wp-clone-$$; notify-send 'Wallpapers' 'Clone finished'"]
+        command: ["bash", "-c", "mkdir -p ~/Pictures/Wallpapers && git clone --depth 1 https://github.com/ilyamiro/shell-wallpapers /tmp/ilyamiro-wp-clone-$$ && cp -nv /tmp/ilyamiro-wp-clone-$$/images/* /tmp/ilyamiro-wp-clone-$$/videos/* ~/Pictures/Wallpapers/ >> ~/.cache/quickshell/wallpaper_clone.log 2>&1; rm -rf /tmp/ilyamiro-wp-clone-$$; notify-send 'Wallpapers' 'Clone finished'"]
         onExited: running = false
     }
 

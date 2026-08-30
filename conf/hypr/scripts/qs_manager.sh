@@ -108,6 +108,10 @@ handle_wallpaper_prep() {
             sed -i "/^${orphan}$/d;/^000_${orphan}$/d" "$MANIFEST"
         done
 
+        DONE_LIST=$(find "$THUMB_DIR" -maxdepth 1 -type f \
+            ! -name '.source_dir' ! -name '.manifest' \
+            -printf "%f\n" | sed 's/^000_//' | sort)
+
         while IFS= read -r filename; do
             img="$SRC_DIR/$filename"
             [ -f "$img" ] || continue
@@ -137,8 +141,9 @@ handle_wallpaper_prep() {
                     echo "$filename" >> "$MANIFEST"
                 fi
             fi
-        done < <(comm -23 "$SRC_LIST" <(sed 's/^000_//' "$MANIFEST" | sort))
+        done < <(comm -23 "$SRC_LIST" <(printf '%s\n' "$DONE_LIST"))
 
+        build_manifest
         rm -f "$SRC_LIST" "$PREP_LOCK"
     ) </dev/null >/dev/null 2>&1 &
 }
