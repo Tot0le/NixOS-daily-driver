@@ -55,6 +55,7 @@ in
     awww
     mpvpaper
     matugen
+    file
 
     # Screenshot system dependencies
     gpu-screen-recorder

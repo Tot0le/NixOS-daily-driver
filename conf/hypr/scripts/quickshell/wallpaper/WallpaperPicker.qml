@@ -613,7 +613,13 @@ Item {
     }
 
     function checkItemMatchesFilter(fileName, isVid, cv, filter) {
-        if (filter === "Search") return true;
+        if (filter === "Search") {
+            if (window.hasSearched) return true; // résultats DDG déjà téléchargés : on garde tel quel
+            let q = window.searchQuery.trim().toLowerCase();
+            if (q === "") return true;
+            let clean = window.getCleanName(fileName).toLowerCase();
+            return clean.indexOf(q) !== -1;
+        }
 
         if (filter === "All") return true;
         if (filter === "Video") return isVid;
@@ -890,7 +896,7 @@ Item {
     ListModel { id: localProxyModel }
     ListModel { id: searchProxyModel }
     
-    readonly property var activeModel: window.currentFilter === "Search" ? searchProxyModel : localProxyModel
+    readonly property var activeModel: (window.currentFilter === "Search" && window.hasSearched) ? searchProxyModel : localProxyModel
 
     FolderListModel {
         id: localFolderModel
@@ -1698,6 +1704,8 @@ Item {
                     onTextEdited: {
                         window.hasSearched = false;
                         searchState.searched = false;
+                        window.searchQuery = searchInput.text;
+                        window.updateVisibleCount();
                     }
                     
                     onAccepted: {
