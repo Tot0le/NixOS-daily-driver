@@ -37,6 +37,11 @@ Item {
     property bool isOnlineSearch: false
     property bool isSearchPaused: false
     property bool searchBoxOpen: false
+    property var activeTags: ({})
+    property bool showNameDialog: false
+    property string pendingApplyFileName: ""
+    property bool pendingApplyIsVideo: false
+    property string nameDialogInput: ""
     property bool hasSearched: false
     property var colorMap: ({})
     property int cacheVersion: 0 
@@ -136,7 +141,7 @@ Item {
         return selected.join(",");
     }
 
-    function applyWallpaper(safeFileName, isVideo) {
+    function applyWallpaper(safeFileName, isVideo, desiredFileName) {
         if (!safeFileName || window.isApplying) return;
         
         let outputs = window.getMonitorOutputs();
@@ -160,9 +165,11 @@ Item {
         const logFile = paths.logDir + "/awww_debug.log";
         
         if (window.currentFilter === "Search" && window.hasSearched) {
+            let finalName = (desiredFileName && desiredFileName.length > 0) ? desiredFileName : safeFileName;
+            window.targetWallName = finalName;
             let alreadyExists = window.isDownloaded(safeFileName);
-            let destFile = window.srcDir + "/" + safeFileName;
-            let finalThumb = decodeURIComponent(window.thumbDir.replace("file://", "")) + "/" + safeFileName;
+            let destFile = window.srcDir + "/" + finalName;
+            let finalThumb = decodeURIComponent(window.thumbDir.replace("file://", "")) + "/" + finalName;
             let tempThumb = decodeURIComponent(window.searchDir.replace("file://", "")) + "/" + safeFileName;
             let mapFile = paths.getCacheDir("wallpaper_picker") + "/search_map.txt";
 
@@ -190,7 +197,7 @@ Item {
                 Quickshell.execDetached(["bash", "-c", applyScript]);
             } else {
                 window.isDownloadingWallpaper = true;
-                window.currentDownloadName = safeFileName;
+                window.currentDownloadName = finalName;
 
                 const downloadScript = `
                     export SAFE_NAME="${escapeBash(safeFileName)}"
@@ -352,6 +359,24 @@ Item {
         if (!name) return "";
         let clean = String(name);
         return clean.startsWith("000_") ? clean.substring(4) : clean;
+    }
+
+    function sanitizeWallpaperName(raw, originalFileName) {
+        let dotIdx = originalFileName.lastIndexOf(".");
+        let ext = dotIdx !== -1 ? originalFileName.substring(dotIdx) : "";
+
+        let base = raw.trim().toLowerCase();
+        base = base.replace(/[^a-z0-9]+/g, "-");
+        base = base.replace(/^-+|-+$/g, "");
+        if (base === "") return "";
+
+        let candidate = base + ext;
+        let n = 2;
+        while (window.isDownloaded(candidate)) {
+            candidate = base + "-" + n + ext;
+            n++;
+        }
+        return candidate;
     }
 
     function isDownloaded(name) {
@@ -619,30 +644,60 @@ Item {
         if (q === "") return true;
 
         let clean = window.getCleanName(fileName).toLowerCase();
-        clean = clean.replace(/\.[a-z0-9]+$/, "");   // retire l'extension
+        clean = clean.replace(/\.[a-z0-9]+$/, "");   // strip extension
         clean = clean.replace(/[-_.]+/g, " ");        // "autumn-forest" -> "autumn forest"
 
         let words = q.split(/\s+/).filter(w => w.length > 0);
         return words.every(w => clean.indexOf(w) !== -1);
     }
 
+    function isTagActive(name) {
+        if (name === "All") {
+            return Object.keys(window.activeTags).filter(k => window.activeTags[k]).length === 0;
+        }
+        return !!window.activeTags[name];
+    }
+
+    function toggleTag(name) {
+        if (name === "All") {
+            window.activeTags = {};
+        } else {
+            let copy = Object.assign({}, window.activeTags);
+            if (copy[name]) {
+                delete copy[name];
+            } else {
+                copy[name] = true;
+            }
+            window.activeTags = copy;
+        }
+    }
+
+    function getItemBucket(fileName) {
+        let hexColor = window.colorMap[String(fileName)];
+        return !hexColor ? "Monochrome" : window.getHexBucket(hexColor);
+    }
+
+    function matchesActiveTags(fileName, isVid) {
+        let tags = window.activeTags;
+        let keys = Object.keys(tags).filter(k => tags[k]);
+        if (keys.length === 0) return true; // no tag selected = "All"
+
+        let videoSelected = keys.indexOf("Video") !== -1;
+        let colorKeys = keys.filter(k => k !== "Video");
+
+        if (videoSelected && !isVid) return false;
+        if (colorKeys.length > 0 && colorKeys.indexOf(window.getItemBucket(fileName)) === -1) return false;
+
+        return true;
+    }
+
     function checkItemMatchesFilter(fileName, isVid, cv, filter) {
         if (filter === "Search") {
-            if (window.hasSearched) return true; // résultats DDG déjà téléchargés : on garde tel quel
+            if (window.hasSearched) return true; // DDG results already downloaded: keep as-is
             return window.matchesSearchQuery(fileName);
         }
 
-        let baseMatch;
-        if (filter === "All") {
-            baseMatch = true;
-        } else if (filter === "Video") {
-            baseMatch = isVid;
-        } else {
-            let hexColor = window.colorMap[String(fileName)];
-            baseMatch = !hexColor ? (filter === "Monochrome") : (window.getHexBucket(hexColor) === filter);
-        }
-
-        return baseMatch && window.matchesSearchQuery(fileName);
+        return window.matchesActiveTags(fileName, isVid) && window.matchesSearchQuery(fileName);
     }
 
     FolderListModel {
@@ -758,10 +813,7 @@ Item {
             return;
         }
 
-        let filterOrder = ["All", "Video", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Monochrome"];
-        let currentFilterIdx = filterOrder.indexOf(window.currentFilter);
-
-        if (currentFilterIdx === -1) {
+        if (window.currentFilter === "Search") {
             let current = start;
             for (let i = 0; i < targetModel.count; i++) {
                 current = (current + direction + targetModel.count) % targetModel.count;
@@ -776,27 +828,30 @@ Item {
             return;
         }
 
+        let filterOrder = ["All", "Video", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Monochrome"];
+        let currentFilterIdx = 0;
+        for (let i = 0; i < filterOrder.length; i++) {
+            if (window.isTagActive(filterOrder[i])) { currentFilterIdx = i; break; }
+        }
+
         let nextFilterIdx = currentFilterIdx + direction;
 
         if (nextFilterIdx >= 0 && nextFilterIdx < filterOrder.length) {
             window.jumpToLastOnFilterChange = (direction === -1);
-            window.currentFilter = filterOrder[nextFilterIdx];
+            let nextName = filterOrder[nextFilterIdx];
+            window.activeTags = nextName === "All" ? {} : ({ [nextName]: true });
         }
     }
 
     function cycleFilter(direction) {
-        let currentIdx = -1;
-        for (let i = 0; i < window.filterData.length; i++) {
-            if (window.filterData[i].name === window.currentFilter) {
-                currentIdx = i;
-                break;
-            }
+        let filterOrder = ["All", "Video", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Monochrome"];
+        let currentIdx = 0;
+        for (let i = 0; i < filterOrder.length; i++) {
+            if (window.isTagActive(filterOrder[i])) { currentIdx = i; break; }
         }
-        
-        if (currentIdx !== -1) {
-            let nextIdx = (currentIdx + direction + window.filterData.length) % window.filterData.length;
-            window.currentFilter = window.filterData[nextIdx].name;
-        }
+        let nextIdx = (currentIdx + direction + filterOrder.length) % filterOrder.length;
+        let nextName = filterOrder[nextIdx];
+        window.activeTags = nextName === "All" ? {} : ({ [nextName]: true });
     }
 
     function applyFilters(forceSnap) {
@@ -852,6 +907,16 @@ Item {
         window.updateVisibleCount();
     }
 
+    onActiveTagsChanged: {
+        window.isFilterAnimating = true;
+        filterAnimationTimer.restart();
+        if (window.currentFilter !== "Search") {
+            Qt.callLater(() => window.applyFilters(false));
+        } else {
+            window.updateVisibleCount();
+        }
+    }
+
     onCurrentFilterChanged: {
         window.isFilterAnimating = true;
         filterAnimationTimer.restart();
@@ -904,7 +969,7 @@ Item {
         } 
     }
     
-    Shortcut { sequence: "Escape"; enabled: !window.isApplying; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } window.searchBoxOpen = false; } }
+    Shortcut { sequence: "Escape"; enabled: !window.isApplying; onActivated: { if (window.showNameDialog) { window.showNameDialog = false; return; } if (window.currentFilter === "Search") { window.currentFilter = "All"; } window.searchBoxOpen = false; } }
     Shortcut { sequence: "Tab"; enabled: !window.isApplying; onActivated: window.cycleFilter(1) }
     Shortcut { sequence: "Backtab"; enabled: !window.isApplying; onActivated: window.cycleFilter(-1) }
 
@@ -1190,7 +1255,15 @@ Item {
                     enabled: delegateRoot.matchesFilter && !window.isScrollingBlocked && !window.isApplying
                     onClicked: {
                         view.currentIndex = index
-                        window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo)
+                        if (window.currentFilter === "Search" && window.hasSearched && !window.isDownloaded(delegateRoot.safeFileName)) {
+                            window.pendingApplyFileName = delegateRoot.safeFileName;
+                            window.pendingApplyIsVideo = delegateRoot.isVideo;
+                            window.nameDialogInput = "";
+                            window.showNameDialog = true;
+                            Qt.callLater(() => nameDialogInputField.forceActiveFocus());
+                        } else {
+                            window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo)
+                        }
                     }
                 }
 
@@ -1507,12 +1580,12 @@ Item {
                         anchors.fill: parent
                         radius: window.s(10)
                         color: modelData.hex === "" 
-                                ? (window.currentFilter === modelData.name ? _theme.surface2 : "transparent") 
+                                ? (window.isTagActive(modelData.name) ? _theme.surface2 : "transparent") 
                                 : modelData.hex
                         
-                        border.color: window.currentFilter === modelData.name ? _theme.text : _theme.surface1
-                        border.width: window.currentFilter === modelData.name ? window.s(2) : 1
-                        scale: window.currentFilter === modelData.name ? 1.15 : (filterMouse.containsMouse ? 1.08 : 1.0)
+                        border.color: window.isTagActive(modelData.name) ? _theme.text : _theme.surface1
+                        border.width: window.isTagActive(modelData.name) ? window.s(2) : 1
+                        scale: window.isTagActive(modelData.name) ? 1.15 : (filterMouse.containsMouse ? 1.08 : 1.0)
                         
                         Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
                         Behavior on border.color { ColorAnimation { duration: 300 } }
@@ -1522,10 +1595,10 @@ Item {
                             visible: modelData.hex === "" && modelData.name !== "Video" && modelData.name !== "All"
                             text: modelData.label
                             anchors.centerIn: parent
-                            color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                            color: window.isTagActive(modelData.name) ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
                             font.family: "JetBrains Mono"
                             font.pixelSize: window.s(14)
-                            font.bold: window.currentFilter === modelData.name
+                            font.bold: window.isTagActive(modelData.name)
                             Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
                         }
 
@@ -1534,7 +1607,7 @@ Item {
                             width: window.s(14); height: window.s(16)
                             anchors.centerIn: parent
                             anchors.horizontalCenterOffset: window.s(2)
-                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                            property string activeColor: window.isTagActive(modelData.name) ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
                             onActiveColorChanged: requestPaint()
                             property real scaleTrigger: window.s(1)
                             onScaleTriggerChanged: requestPaint()
@@ -1557,7 +1630,7 @@ Item {
                             visible: modelData.name === "All"
                             width: window.s(14); height: window.s(14)
                             anchors.centerIn: parent
-                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                            property string activeColor: window.isTagActive(modelData.name) ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
                             onActiveColorChanged: requestPaint()
                             property real scaleTrigger: window.s(1)
                             onScaleTriggerChanged: requestPaint()
@@ -1580,7 +1653,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         enabled: !window.isApplying
-                        onClicked: window.currentFilter = modelData.name
+                        onClicked: window.toggleTag(modelData.name)
                         cursorShape: Qt.PointingHandCursor
                     }
                 }
@@ -1819,6 +1892,141 @@ Item {
             Quickshell.execDetached(["bash", "-c", "echo 'pause' > " + paths.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
         } else {
             Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + paths.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in $(pgrep -f ddg_search.sh); do if [ \"$p\" != \"$$\" ] && [ \"$p\" != \"$BASHPID\" ]; then kill -9 $p 2>/dev/null || true; fi; done; pkill -f '[g]et_ddg_links.py'"]);
+        }
+    }
+
+    Rectangle {
+        id: nameDialogBackdrop
+        anchors.fill: parent
+        z: 1000
+        color: Qt.rgba(0, 0, 0, 0.6)
+        visible: window.showNameDialog
+        opacity: window.showNameDialog ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 200 } }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: window.showNameDialog = false
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: window.s(420)
+            height: window.s(180)
+            radius: window.s(12)
+            color: _theme.surface2
+            border.color: _theme.text
+            border.width: 1
+
+            MouseArea { anchors.fill: parent } // absorb clicks so they don't close via the backdrop
+
+            Column {
+                anchors.centerIn: parent
+                spacing: window.s(16)
+                width: parent.width - window.s(48)
+
+                Text {
+                    text: "Wallpaper name"
+                    color: _theme.text
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: window.s(16)
+                    font.bold: true
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: window.s(40)
+                    radius: window.s(8)
+                    color: _theme.surface1
+                    border.color: _theme.text
+                    border.width: 1
+
+                    TextInput {
+                        id: nameDialogInputField
+                        anchors.fill: parent
+                        anchors.margins: window.s(10)
+                        text: window.nameDialogInput
+                        color: _theme.text
+                        font.family: "JetBrains Mono"
+                        font.pixelSize: window.s(14)
+                        clip: true
+                        verticalAlignment: TextInput.AlignVCenter
+
+                        onTextEdited: window.nameDialogInput = text
+
+                        onAccepted: nameDialogConfirmArea.confirm()
+                    }
+                }
+
+                Row {
+                    spacing: window.s(12)
+                    anchors.right: parent.right
+
+                    Rectangle {
+                        width: window.s(90)
+                        height: window.s(36)
+                        radius: window.s(8)
+                        color: cancelArea.containsMouse ? _theme.surface1 : "transparent"
+                        border.color: _theme.text
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Cancel"
+                            color: _theme.text
+                            font.family: "JetBrains Mono"
+                            font.pixelSize: window.s(13)
+                        }
+
+                        MouseArea {
+                            id: cancelArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: window.showNameDialog = false
+                        }
+                    }
+
+                    Rectangle {
+                        id: nameDialogConfirmArea
+                        width: window.s(90)
+                        height: window.s(36)
+                        radius: window.s(8)
+                        color: confirmArea.containsMouse ? _theme.text : _theme.surface1
+                        border.color: _theme.text
+                        border.width: 1
+
+                        function confirm() {
+                            let finalName = window.sanitizeWallpaperName(window.nameDialogInput, window.pendingApplyFileName);
+                            window.showNameDialog = false;
+                            window.applyWallpaper(window.pendingApplyFileName, window.pendingApplyIsVideo, finalName);
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Apply"
+                            color: confirmArea.containsMouse ? _theme.surface2 : _theme.text
+                            font.family: "JetBrains Mono"
+                            font.pixelSize: window.s(13)
+                        }
+
+                        MouseArea {
+                            id: confirmArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: nameDialogConfirmArea.confirm()
+                        }
+                    }
+                }
+
+                Text {
+                    text: "Leave empty to keep an auto-generated name"
+                    color: Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.6)
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: window.s(11)
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                }
+            }
         }
     }
 }
