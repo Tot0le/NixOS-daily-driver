@@ -181,7 +181,7 @@ Item {
     Process {
         id: cloneProcess
         running: false
-        command: ["bash", "-c", "mkdir -p ~/Pictures/Wallpapers && git clone --depth 1 https://github.com/ilyamiro/shell-wallpapers /tmp/ilyamiro-wp-clone-$$ && cp -nv /tmp/ilyamiro-wp-clone-$$/images/* /tmp/ilyamiro-wp-clone-$$/videos/* ~/Pictures/Wallpapers/ >> ~/.cache/quickshell/wallpaper_clone.log 2>&1; rm -rf /tmp/ilyamiro-wp-clone-$$; notify-send 'Wallpapers' 'Clone finished'"]
+        command: ["bash", "-c", "mkdir -p ~/Pictures/Wallpapers && git clone --depth 1 https://github.com/Tot0le/shell-wallpapers /tmp/ilyamiro-wp-clone-$$ && cp -nv /tmp/ilyamiro-wp-clone-$$/images/* /tmp/ilyamiro-wp-clone-$$/videos/* ~/Pictures/Wallpapers/ >> ~/.cache/quickshell/wallpaper_clone.log 2>&1; rm -rf /tmp/ilyamiro-wp-clone-$$; notify-send 'Wallpapers' 'Clone finished'"]
         onExited: running = false
     }
 
@@ -1649,7 +1649,7 @@ Item {
                         model: [
                             { name: "NixOS Config", icon: "", color: "blue", url: "https://github.com/Tot0le/NixOS-daily-driver" },
                             { name: "Imperative Dots", icon: "󰣇", color: "mauve", url: "https://github.com/ilyamiro/imperative-dots" },
-                            { name: "Wallpapers", icon: "", color: "peach", url: "https://github.com/ilyamiro/shell-wallpapers" }
+                            { name: "Wallpapers", icon: "", color: "mauve", url: "https://github.com/ilyamiro/shell-wallpapers" }
                         ]
 
                         Rectangle {
@@ -1705,8 +1705,8 @@ Item {
                                 anchors.margins: root.s(8)
                                 height: root.s(24)
                                 radius: root.s(8)
-                                color: cloneMa.containsMouse ? root.peach : Qt.alpha(root.peach, 0.15)
-                                border.color: root.peach
+                                color: cloneMa.containsMouse ? root[modelData.color] : Qt.alpha(root[modelData.color], 0.15)
+                                border.color: root[modelData.color]
                                 border.width: 1
 
                                 Behavior on color { ColorAnimation { duration: 150 } }
@@ -1719,14 +1719,14 @@ Item {
                                         text: cloneProcess.running ? "" : ""
                                         font.family: "Iosevka Nerd Font"
                                         font.pixelSize: root.s(11)
-                                        color: cloneMa.containsMouse ? root.crust : root.peach
+                                        color: cloneMa.containsMouse ? root.crust : root[modelData.color]
                                     }
                                     Text {
                                         text: cloneProcess.running ? "Cloning..." : "Clone"
                                         font.family: "JetBrains Mono"
                                         font.weight: Font.Bold
                                         font.pixelSize: root.s(10)
-                                        color: cloneMa.containsMouse ? root.crust : root.peach
+                                        color: cloneMa.containsMouse ? root.crust : root[modelData.color]
                                     }
                                 }
 
