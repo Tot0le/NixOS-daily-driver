@@ -1,8 +1,10 @@
 { pkgs ? import <nixpkgs> {} }:
 
 let
-  # Using JDK 25 for Class version 69.0 (PaperMC 2026)
-  targetJava = pkgs.jdk25;
+  # Default JDK — overwritten automatically by `setup-minecraft` (see 
+  # scripts/setup_minecraft.sh). JDK 21 covers most current loaders:
+  # NeoForge 1.21.x, recent Fabric, Paper 1.20.5+.
+  targetJava = pkgs.jdk21;
 
   # Custom derivation to fetch Playit directly since it's not in Nixpkgs yet
   playit = pkgs.stdenv.mkDerivation rec {
