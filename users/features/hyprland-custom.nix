@@ -81,6 +81,11 @@ in
   xdg.configFile."hypr/colors.conf".source = ../../conf/hypr/colors.conf;
   xdg.configFile."matugen".source = ../../conf/matugen;
 
+  # Ensure a local override file always exists, even on a fresh install
+  home.activation.ensureHyprLocalConf = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    touch $HOME/.config/hypr/local.conf
+  '';
+  
   wayland.windowManager.hyprland = {
     enable = true;
     
