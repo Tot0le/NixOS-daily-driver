@@ -31,6 +31,7 @@ in
     ./modules/cooling.nix
     ./modules/monitoring.nix
     ./modules/docker.nix
+    ./modules/keyd.nix
     #./modules/virtualization.nix
     #./modules/corsair.nix
   ];
