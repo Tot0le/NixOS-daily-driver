@@ -46,6 +46,8 @@ in
   # Declarative Git configuration
   programs.git = {
     enable = true;
+    userName = "name";
+    userEmail = "your.mail@example.com"
     settings = {
       core.editor = "micro";
     };
