@@ -3,7 +3,7 @@
 let
   # Import the centralized shortcut catalog
   shortcutCatalog = import ../../conf/shortcuts.list.nix;
-  allShortcuts = shortcutCatalog.commonApps // shortcutCatalog.terminalTools // shortcutCatalog.graphicTools // shortcutCatalog.fans;
+  allShortcuts = shortcutCatalog.commonApps // shortcutCatalog.quickshellApps // shortcutCatalog.terminalTools // shortcutCatalog.graphicTools // shortcutCatalog.fans;
   
   # Convert GNOME binding syntax to Hyprland syntax
   convertBinding = gnomeBind:
@@ -35,6 +35,7 @@ in
     hyprshot
     quickshell
     hypridle
+    swayosd
     # External script dependencies
     rofi pavucontrol fortune wl-screenrec alsa-utils awww networkmanager_dmenu
     wl-clipboard fd qt6.qtmultimedia qt6.qt5compat qt6.qtwebsockets qt6.qtwebengine
@@ -66,7 +67,12 @@ in
     # Audio equalizer
     easyeffects
   ];
-
+  
+  services.swayosd = {
+    enable = true;
+    topMargin = 0.9; # optional
+  };
+  
   # Abort the build if duplicate shortcut bindings are detected
   assertions = [
     {

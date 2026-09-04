@@ -7,16 +7,9 @@
   commonApps = {
     browser  = [ "Browser" "firefox" "<Super>f" ];
     explorer = [ "Explorer" "nautilus" "<Super>e" ];
-    launcher = [ "App Launcher" "~/.config/hypr/scripts/qs_manager.sh toggle applauncher" "<Super>r" ];
     lock     = [ "Lock Screen" "~/.config/hypr/scripts/lock.sh" "<Super>l" ];
     reload   = [ "Reload Shell" "~/.config/hypr/scripts/reload.sh" "<Super><Shift>r" ];
-    monitors = [ "Toggle Monitors" "~/.config/hypr/scripts/qs_manager.sh toggle monitors" "<Super>m" ];
-    settings = [ "Toggle Settings" "~/.config/hypr/scripts/qs_manager.sh toggle settings" "<Super><Shift>s" ];
-    battery  = [ "Toggle Battery" "~/.config/hypr/scripts/qs_manager.sh toggle battery" "<Super>b" ];
-    focustime = [ "Toggle Focus Time" "~/.config/hypr/scripts/qs_manager.sh toggle focustime" "<Super><Shift>t" ];
-    guide    = [ "Toggle Guide" "~/.config/hypr/scripts/qs_manager.sh toggle guide" "<Super>h" ];
-         
-    
+
     # Hardware media controls
     volUp    = [ "Volume Up" "pamixer -i 5" ", XF86AudioRaiseVolume" ];
     volDown  = [ "Volume Down" "pamixer -d 5" ", XF86AudioLowerVolume" ];
@@ -25,8 +18,17 @@
     next     = [ "Next Track" "playerctl next" ", XF86AudioNext" ];
     prev     = [ "Previous Track" "playerctl previous" ", XF86AudioPrev" ];
     stop     = [ "Stop Track" "playerctl stop" ", XF86AudioStop" ];
+  };
 
-    # Quickshell UI toggles
+  # Only meaningful inside a Hyprland/Quickshell session — never pushed to GNOME
+  quickshellApps = {
+    launcher  = [ "App Launcher" "~/.config/hypr/scripts/qs_manager.sh toggle applauncher" "<Super>r" ];
+    monitors  = [ "Toggle Monitors" "~/.config/hypr/scripts/qs_manager.sh toggle monitors" "<Super>m" ];
+    settings  = [ "Toggle Settings" "~/.config/hypr/scripts/qs_manager.sh toggle settings" "<Super><Shift>s" ];
+    battery   = [ "Toggle Battery" "~/.config/hypr/scripts/qs_manager.sh toggle battery" "<Super>b" ];
+    focustime = [ "Toggle Focus Time" "~/.config/hypr/scripts/qs_manager.sh toggle focustime" "<Super><Shift>t" ];
+    guide     = [ "Toggle Guide" "~/.config/hypr/scripts/qs_manager.sh toggle guide" "<Super>h" ];
+
     togglePerf      = [ "Toggle Performance" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 1" "<Super>a" ];
     toggleDraw      = [ "Toggle Draw" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 0" "<Super>d" ];
     toggleTimer     = [ "Toggle Timer" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 2" "<Super>u" ];
