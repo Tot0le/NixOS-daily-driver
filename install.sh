@@ -46,7 +46,22 @@ echo "🔧 Patching configuration.nix with user '$TARGET_USER'..."
 sed -i "s/mainuser = {/$TARGET_USER = {/g" /etc/nixos/configuration.nix
 sed -i "s/fullName = \"Main User\"/fullName = \"$TARGET_USER\"/g" /etc/nixos/configuration.nix
 
-# 4. Build the System
+# 4. Create machine-local config (never committed — see local.nix in .gitignore)
+if [ -f /etc/nixos/local.nix ]
+then
+    echo "✅ local.nix already exists, keeping it as-is."
+else
+    DEFAULT_HOSTNAME="nixos-$(hostname 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-' | head -c 20)"
+    read -p "🖥️  Enter a hostname for this machine [$DEFAULT_HOSTNAME]: " INPUT_HOSTNAME
+    TARGET_HOSTNAME=${INPUT_HOSTNAME:-$DEFAULT_HOSTNAME}
+
+    cat > /etc/nixos/local.nix <<EOF
+{ networking.hostName = "$TARGET_HOSTNAME"; }
+EOF
+    echo "✅ Created local.nix with hostname '$TARGET_HOSTNAME'."
+fi
+
+# 5. Build the System
 echo "📦 Staging files for Nix..."
 cd /etc/nixos
 git config --global --add safe.directory /etc/nixos
@@ -55,7 +70,7 @@ git add .
 echo "🔨 Building NixOS (this may take a few minutes)..."
 nixos-rebuild switch
 
-# 5. Fix permissions
+# 6. Fix permissions
 echo "🔐 Assigning repository ownership to $TARGET_USER..."
 chown -R "$TARGET_USER":users /etc/nixos
 chown -R "$TARGET_USER":users "/home/$TARGET_USER"

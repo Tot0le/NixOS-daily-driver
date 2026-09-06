@@ -8,7 +8,8 @@ let
   # Convert GNOME binding syntax to Hyprland syntax
   convertBinding = gnomeBind:
     let
-      s0 = builtins.replaceStrings ["<Super><Shift>"] ["SUPER SHIFT, "] gnomeBind;
+      s00 = builtins.replaceStrings ["<Super><Ctrl>"] ["SUPER CTRL, "] gnomeBind;
+      s0 = builtins.replaceStrings ["<Super><Shift>"] ["SUPER SHIFT, "] s00;
       s1 = builtins.replaceStrings ["<Super>"] ["SUPER, "] s0;
       s2 = builtins.replaceStrings ["<Ctrl><Shift>"] ["CTRL SHIFT, "] s1;
       s3 = builtins.replaceStrings ["<Ctrl>"] ["CTRL, "] s2;

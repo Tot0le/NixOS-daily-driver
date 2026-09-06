@@ -34,8 +34,8 @@ in
     ./modules/keyd.nix
     #./modules/virtualization.nix
     #./modules/corsair.nix
-  ];
-
+  ] ++ (if builtins.pathExists ./local.nix then [ ./local.nix ] else []);
+  
   environment.etc."systemd/system-sleep/xhci-fix" = {
     mode = "0755";
     text = ''
@@ -64,7 +64,7 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.grub.useOSProber = true;
 
-  networking.hostName = "nixos"; # Define your hostname.
+  networking.hostName = pkgs.lib.mkDefault "nixos";
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant. conflict with networking.networkmanager.enable = true;
 
   # Configure network proxy if necessary
@@ -207,7 +207,6 @@ EOF
     nbfc-linux
     wl-clipboard
     libnotify
-
   ];
 
   # Automate Home Manager installation on initial terminal session.
