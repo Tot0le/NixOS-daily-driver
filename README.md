@@ -106,7 +106,7 @@ This configuration includes a template for an isolated PostgreSQL development en
 5. Exit the shell with <kbd>Ctrl</kbd> + <kbd>D</kbd>; a `trap` will automatically shut down the database server.
 
 ### ☕ Java & Minecraft Kits
-Use `setup-java` (JDK 21, JavaFX, Maven) or `setup-minecraft` (JDK 25, Playit.gg) to instantly deploy isolated project environments with proper library pathing for graphical interfaces.
+Use `setup-java` (JDK 21, JavaFX, Maven) or `setup-minecraft-server` (JDK 8/17/21/25 depending on your server, plus tmux, Playit.gg, and Python+discord.py) to instantly deploy isolated project environments with proper library pathing for graphical interfaces.
 
 ### 🔑 Local Git Token Manager
 A secure, per-user script to copy your GitHub token to the Wayland clipboard:

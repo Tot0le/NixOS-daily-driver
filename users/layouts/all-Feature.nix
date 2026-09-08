@@ -12,8 +12,8 @@ let
   # Environment setup scripts
   setupDb = pkgs.writeShellScriptBin "setup-db" (builtins.readFile ../../scripts/setup_db.sh);
   setupJava = pkgs.writeShellScriptBin "setup-java" (builtins.readFile ../../scripts/setup_java.sh);
-  setupMinecraft = pkgs.writeShellScriptBin "setup-minecraft" (builtins.readFile ../../scripts/setup_minecraft.sh);
-
+  setupMinecraft = pkgs.writeShellScriptBin "setup-minecraft-server" (builtins.readFile ../../scripts/setup_minecraft_server.sh);
+  
 in
 {
   # Inherit base configuration from simple.nix.
