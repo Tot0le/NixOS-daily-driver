@@ -11,6 +11,7 @@ let
 
   # Environment setup scripts
   setupDb = pkgs.writeShellScriptBin "setup-db" (builtins.readFile ../../scripts/setup_db.sh);
+  setupPhp = pkgs.writeShellScriptBin "setup-php" (builtins.readFile ../../scripts/setup_php.sh);
   setupJava = pkgs.writeShellScriptBin "setup-java" (builtins.readFile ../../scripts/setup_java.sh);
   setupMinecraft = pkgs.writeShellScriptBin "setup-minecraft-server" (builtins.readFile ../../scripts/setup_minecraft_server.sh);
   
@@ -47,7 +48,7 @@ in
   programs.git = {
     enable = true;
     userName = "name";
-    userEmail = "your.mail@example.com"
+    userEmail = "your.mail@example.com";
     settings = {
       core.editor = "micro";
     };
@@ -96,6 +97,9 @@ in
 
     # Direct import of pick_color script bypassing global modules.
     pickColorScript
+
+    # Useful when working with database
+    dbeaver-bin
   ];
   
 }
