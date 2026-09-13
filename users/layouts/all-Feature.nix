@@ -89,6 +89,7 @@ in
     
     # Environment Setups
     setupDb
+    setupPhp
     setupJava
     setupMinecraft
     
