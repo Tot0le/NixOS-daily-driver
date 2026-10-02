@@ -73,6 +73,7 @@ in
 
   # Enable networking
   networking.networkmanager.enable = true;
+  hardware.steam-hardware.enable = true;
 
   # Set your time zone.
   time.timeZone = "Europe/Paris";
@@ -189,6 +190,17 @@ EOF
     VISUAL = "micro";
   };
 
+  # Unlock GNOME Keyring automatically upon TTY console login using PAM session credentials.
+  # This exposes the SSH agent and stored secrets without prompting for passwords post-login.
+  security.pam.services.login.enableGnomeKeyring = true;
+
+  programs.steam = {
+    enable = true;
+    remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
+    dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
+    localNetworkGameTransfers.openFirewall = true; # Open ports in the firewall for Steam Local Network Game Transfers
+  };
+
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
@@ -207,6 +219,8 @@ EOF
     nbfc-linux
     wl-clipboard
     libnotify
+
+    lunar-client
   ];
 
   # Automate Home Manager installation on initial terminal session.
