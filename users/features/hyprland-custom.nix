@@ -95,6 +95,9 @@ in
   
   wayland.windowManager.hyprland = {
     enable = true;
+    # Keep the hyprlang format: the config below is written in it, and the
+    # Home Manager default only moves to Lua with stateVersion >= 26.05
+    configType = "hyprlang";
     
     # Inject bindings BEFORE external sources to prevent parser lockouts
     extraConfig = ''

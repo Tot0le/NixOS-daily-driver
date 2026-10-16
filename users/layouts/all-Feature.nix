@@ -25,6 +25,7 @@ in
     ../../users/features/kitty-terminal.nix 
     ../../users/features/zsh-shell.nix
     ../../users/features/hyprland-custom.nix
+   # ../../users/features/curseforge.nix //TODO
   ];
 
   # User-specific GNOME settings
@@ -47,10 +48,11 @@ in
   # Declarative Git configuration
   programs.git = {
     enable = true;
-    userName = "name";
-    userEmail = "your.mail@example.com";
+    # Identity lives outside the repo, per user: git refuses to commit without it
+    includes = [ { path = "~/.config/git/identity"; } ];
     settings = {
       core.editor = "micro";
+      user.useConfigOnly = true;
     };
   };
 
@@ -100,7 +102,7 @@ in
     pickColorScript
 
     # Useful when working with database
-    dbeaver-bin
+    pkgs.dbeaver-bin
   ];
   
 }
