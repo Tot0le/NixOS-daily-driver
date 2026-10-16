@@ -8,7 +8,7 @@
 # TODO : gérer tout les autres fichiers personnels pour transférer les fichiers entre les deux OS
 
 # /etc/nixos/configuration.nix
-{ config, pkgs, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 let
   # Define all system users and their respective roles
@@ -144,40 +144,6 @@ in
       ++ (if info.isAdmin then [ "wheel" ] else []);
   }) usersConfigs;
 
-
-  # Generate standalone Home Manager templates for new users.
-  system.activationScripts.setupUserHomes = ''
-    ${builtins.concatStringsSep "\n" (pkgs.lib.mapAttrsToList (userName: userInfo: ''
-      declare userHome="/home/${userName}"
-      declare hmConfigDir="$userHome/.config/home-manager"
-      declare hmConfigFile="$hmConfigDir/home.nix"
-
-      if [ ! -f "$hmConfigFile" ]
-      then
-          ${pkgs.coreutils}/bin/mkdir -p "$hmConfigDir"
-          
-          # Copy layout and convert relative paths to absolute NixOS paths.
-          ${pkgs.gnused}/bin/sed -e 's|\.\./\.\.|/etc/nixos|g' \
-              -e 's|\./simple\.nix|/etc/nixos/users/layouts/simple.nix|g' \
-              "/etc/nixos/users/layouts/${userInfo.layout}.nix" > "$hmConfigFile"
-          
-          # Remove final brace to append user-specific parameters.
-          ${pkgs.gnused}/bin/sed -i '$ d' "$hmConfigFile"
-          
-          # Inject Home Manager identity and close configuration block.
-          ${pkgs.coreutils}/bin/cat >> "$hmConfigFile" <<EOF
-  home.username = "${userName}";
-  home.homeDirectory = "$userHome";
-  programs.home-manager.enable = true;
-}
-EOF
-          
-          # Assign ownership to target user.
-          ${pkgs.coreutils}/bin/chown -R ${userName}:users "$userHome/.config"
-      fi
-    '') usersConfigs)}
-  '';
-  
   # Install firefox.
   programs.firefox.enable = true;
 
@@ -221,18 +187,18 @@ EOF
     libnotify
 
     lunar-client
+    libreoffice
   ];
 
-  # Automate Home Manager installation on initial terminal session.
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
   environment.interactiveShellInit = ''
-    if [ -f "$HOME/.config/home-manager/home.nix" ] && ! command -v home-manager &> /dev/null && [ -z "$HM_IS_INSTALLING" ]
+    if [ -f "$HOME/.config/home-manager/flake.nix" ] && ! command -v home-manager &> /dev/null && [ -z "$HM_IS_INSTALLING" ]
     then
         export HM_IS_INSTALLING=1
         echo "🚀 Initializing personal workspace environment..."
-        nix-channel --add https://github.com/nix-community/home-manager/archive/release-25.11.tar.gz home-manager
-        nix-channel --update
-        
-        if nix-shell '<home-manager>' -A install
+
+        if nix run github:nix-community/home-manager/release-26.05 -- switch --flake "$HOME/.config/home-manager" -b bak
         then
             echo ""
             echo "✅ Workspace ready. Tools and shortcuts deployed."
@@ -245,6 +211,23 @@ EOF
     fi
   '';
 
+  # Seed a per-user flake once; after that the file belongs to the user
+  system.activationScripts.setupUserHomes = ''
+    ${builtins.concatStringsSep "\n" (pkgs.lib.mapAttrsToList (userName: userInfo: ''
+      declare hmConfigDir="/home/${userName}/.config/home-manager"
+
+      if [ ! -f "$hmConfigDir/flake.nix" ]
+      then
+          ${pkgs.coreutils}/bin/mkdir -p "$hmConfigDir"
+          ${pkgs.gnused}/bin/sed \
+              -e 's|@USERNAME@|${userName}|g' \
+              -e 's|@LAYOUT@|${userInfo.layout}|g' \
+              ${./users/templates/home-flake.nix} > "$hmConfigDir/flake.nix"
+          ${pkgs.coreutils}/bin/chown -R ${userName}:users "/home/${userName}/.config"
+      fi
+    '') usersConfigs)}
+  '';
+  
   # Force micro to use system clipboard (wl-clipboard)
   environment.etc."micro/settings.json".text = ''
     {
