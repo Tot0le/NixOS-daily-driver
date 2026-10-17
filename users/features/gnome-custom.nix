@@ -59,6 +59,10 @@ in
       gtk4.extraConfig = {
         gtk-application-prefer-dark-theme = 1;
       };
+      # GTK 4 apps ignore the GTK 3 theme. The legacy Home Manager default
+      # imports a gtk-4.0/gtk.css that this package does not ship, which
+      # Nautilus reports as an error at every launch.
+      gtk4.theme = null;
     };
 
     # Force stubborn applications to use the dark theme
