@@ -101,6 +101,9 @@ in
 
   # Enable Hyprland Wayland compositor globally.
   programs.hyprland.enable = true;
+
+  # Pulls in what the shell expects at system level (see its nixos-module.nix)
+  programs.serpantinum.enable = true;
   
   # Configure keymap in X11
   services.xserver.xkb = {

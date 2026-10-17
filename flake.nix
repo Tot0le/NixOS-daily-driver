@@ -15,6 +15,9 @@
       specialArgs = { inherit inputs; };
       modules = [
         ./configuration.nix
+        # System services the shell expects (NetworkManager, i2c, PipeWire).
+        # The per-user side lives in each user's own Home Manager flake.
+        inputs.serpantinum.nixosModules.default
       ];
     };
   };
