@@ -20,25 +20,23 @@
     stop     = [ "Stop Track" "playerctl stop" ", XF86AudioStop" ];
   };
 
-  # Only meaningful inside a Hyprland/Quickshell session — never pushed to GNOME
+  # Only meaningful inside a Hyprland/Serpantinum session — never pushed to GNOME
   quickshellApps = {
-    launcher  = [ "App Launcher" "~/.config/hypr/scripts/qs_manager.sh toggle applauncher" "<Super>r" ];
-    monitors  = [ "Toggle Monitors" "~/.config/hypr/scripts/qs_manager.sh toggle monitors" "<Super>m" ];
-    settings  = [ "Toggle Settings" "~/.config/hypr/scripts/qs_manager.sh toggle settings" "<Super><Shift>s" ];
-    battery   = [ "Toggle Battery" "~/.config/hypr/scripts/qs_manager.sh toggle battery" "<Super>b" ];
-    focustime = [ "Toggle Focus Time" "~/.config/hypr/scripts/qs_manager.sh toggle focustime" "<Super><Shift>t" ];
-    guide     = [ "Toggle Guide" "~/.config/hypr/scripts/qs_manager.sh toggle guide" "<Super>h" ];
-
-    togglePerf      = [ "Toggle Performance" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 1" "<Super>a" ];
-    toggleDraw      = [ "Toggle Draw" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 0" "<Super>d" ];
-    toggleTimer     = [ "Toggle Timer" "~/.config/hypr/scripts/qs_manager.sh toggle dashboard 2" "<Super>u" ];
-    toggleCalendar  = [ "Toggle Calendar" "~/.config/hypr/scripts/qs_manager.sh toggle calendar" "<Super>p" ];
-    toggleClipboard = [ "Toggle Clipboard" "~/.config/hypr/scripts/qs_manager.sh toggle clipboard" "<Super>v" ];
-    toggleNetwork   = [ "Toggle Network" "~/.config/hypr/scripts/qs_manager.sh toggle network" "<Super>n" ];
-    toggleVolume    = [ "Toggle Volume" "~/.config/hypr/scripts/qs_manager.sh toggle volume" "<Super>y" ];
-    toggleWallpaper = [ "Toggle Wallpaper" "~/.config/hypr/scripts/qs_manager.sh toggle wallpaper" "<Super>w" ];
-    toggleMusic     = [ "Toggle Music Player" "~/.config/hypr/scripts/qs_manager.sh toggle music" "<Super>o" ];
-    toggleMovies    = [ "Toggle Movies" "~/.config/hypr/scripts/qs_manager.sh toggle movies" "<Super>g" ];
+    launcher        = [ "App Launcher" "serpantinum msg toggle launcher" "<Super>r" ];
+    toggleClipboard = [ "Toggle Clipboard" "serpantinum msg toggle clipboard" "<Super>v" ];
+    toggleNetwork   = [ "Toggle Network" "serpantinum msg toggle network" "<Super>n" ];
+    toggleVolume    = [ "Toggle Volume" "serpantinum msg toggle volume" "<Super>y" ];
+    toggleWallpaper = [ "Toggle Wallpaper" "serpantinum msg toggle wallpaper" "<Super>w" ];
+    toggleMusic     = [ "Toggle Music Player" "serpantinum msg toggle music" "<Super>o" ];
+    toggleCalendar  = [ "Toggle Calendar" "serpantinum msg toggle calendar" "<Super>p" ];
+    guide           = [ "Toggle Guide" "serpantinum msg toggle guide" "<Super>h" ];
+    settings        = [ "Toggle Settings" "serpantinum msg toggle guide general" "<Super><Shift>s" ];
+    monitors        = [ "Display Settings" "serpantinum msg toggle guide display" "<Super>m" ];
+    focustime       = [ "Toggle Focus Time" "serpantinum msg toggle guide wellbeing" "<Super><Shift>t" ];
+    togglePerf      = [ "Toggle Performance" "serpantinum ipc call floating showSystemUsage" "<Super>a" ];
+    # The old battery shortcut now opens the system panel (it reads UPower)
+    system          = [ "Toggle System Panel" "serpantinum msg toggle system" "<Super>b" ];
+    # TODO: toggleDraw, toggleTimer and toggleMovies have no equivalent found yet
   };
 
   # Tools for advanced terminal environments (Kitty, etc.)
