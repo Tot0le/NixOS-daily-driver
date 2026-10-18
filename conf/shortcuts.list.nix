@@ -7,8 +7,6 @@
   commonApps = {
     browser  = [ "Browser" "firefox" "<Super>f" ];
     explorer = [ "Explorer" "nautilus" "<Super>e" ];
-    lock     = [ "Lock Screen" "~/.config/hypr/scripts/lock.sh" "<Super>l" ];
-    reload   = [ "Reload Shell" "~/.config/hypr/scripts/reload.sh" "<Super><Shift>r" ];
 
     # Hardware media controls
     volUp    = [ "Volume Up" "pamixer -i 5" ", XF86AudioRaiseVolume" ];
@@ -37,6 +35,8 @@
     # The old battery shortcut now opens the system panel (it reads UPower)
     system          = [ "Toggle System Panel" "serpantinum msg toggle system" "<Super>b" ];
     # TODO: toggleDraw, toggleTimer and toggleMovies have no equivalent found yet
+    lock            = [ "Lock Screen" "serpantinum lock" "<Super>l" ];
+    reload          = [ "Reload Shell" "~/.config/hypr/scripts/reload.sh" "<Super><Shift>r" ];
   };
 
   # Tools for advanced terminal environments (Kitty, etc.)
