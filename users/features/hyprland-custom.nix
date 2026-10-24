@@ -1,152 +1,129 @@
 { config, pkgs, lib, ... }:
 
 let
-  # Import the centralized shortcut catalog
+  # Source tree the serpantinum package is built from. It also carries the
+  # compositors/ examples, which the package itself does not install.
+  upstream = config.programs.serpantinum.package.src;
+
+  # Shortcut catalog shared with the GNOME layer
   shortcutCatalog = import ../../conf/shortcuts.list.nix;
-  allShortcuts = shortcutCatalog.commonApps // shortcutCatalog.quickshellApps // shortcutCatalog.terminalTools // shortcutCatalog.graphicTools // shortcutCatalog.fans;
-  
-  # Convert GNOME binding syntax to Hyprland syntax
-  convertBinding = gnomeBind:
+
+  # Catalog entries upstream already covers: volume and media keys go through
+  # the shell so its on-screen display stays in sync. They stay in the catalog
+  # for GNOME but are not pushed to Hyprland.
+  coveredByUpstream = [ "volUp" "volDown" "mute" "play" "next" "prev" ];
+
+  hyprlandShortcuts = removeAttrs (
+    shortcutCatalog.commonApps
+    // shortcutCatalog.terminalTools
+    // shortcutCatalog.graphicTools
+  ) coveredByUpstream;
+
+  # Upstream shortcuts moved to another key. `from` must match the key string
+  # upstream binds (case included); `to` also replaces whatever upstream binds
+  # there. To see what changed upstream before updating, diff keybinds.lua.
+  remaps = [
+    # Clipboard history on Super+V. This also drops the volume popup that
+    # upstream puts on that key, which is not used here.
+    { from = "SUPER + C"; to = "SUPER + V"; cmd = "serpantinum msg toggle clipboard"; }
+    # Frees Super+R
+    { from = "SUPER + R"; to = "SUPER + SHIFT + R"; cmd = "serpantinum reload"; }
+  ];
+
+  # GNOME accelerator ("<Super><Shift>f", ", XF86AudioStop") to a Hyprland Lua
+  # key string ("SUPER + SHIFT + F", "XF86AudioStop"). Single letters are
+  # upper-cased because hl.unbind is case-sensitive and upstream binds "SUPER + F".
+  toLuaKey = accel:
     let
-      s00 = builtins.replaceStrings ["<Super><Ctrl>"] ["SUPER CTRL, "] gnomeBind;
-      s0 = builtins.replaceStrings ["<Super><Shift>"] ["SUPER SHIFT, "] s00;
-      s1 = builtins.replaceStrings ["<Super>"] ["SUPER, "] s0;
-      s2 = builtins.replaceStrings ["<Ctrl><Shift>"] ["CTRL SHIFT, "] s1;
-      s3 = builtins.replaceStrings ["<Ctrl>"] ["CTRL, "] s2;
-      s4 = builtins.replaceStrings ["<Shift>"] ["SHIFT, "] s3;
-      s5 = builtins.replaceStrings ["<Alt>"] ["ALT, "] s4;
-    in s5;
+      modTokens = [ "<Super>" "<Ctrl>" "<Shift>" "<Alt>" ];
+      modNames = [ "SUPER" "CTRL" "SHIFT" "ALT" ];
+      mods = lib.concatLists (lib.zipListsWith
+        (token: name: lib.optional (lib.hasInfix token accel) name)
+        modTokens modNames);
+      rawKey = lib.removePrefix ", "
+        (builtins.replaceStrings modTokens (map (_: "") modTokens) accel);
+      key = if builtins.stringLength rawKey == 1 then lib.toUpper rawKey else rawKey;
+    in lib.concatStringsSep " + " (mods ++ [ key ]);
 
-  # Extract bindings to detect conflicts
-  allBindingsList = lib.mapAttrsToList (name: data: convertBinding (builtins.elemAt data 2)) allShortcuts;
-  uniqueBindings = lib.unique allBindingsList;
+  keyOf = data: toLuaKey (builtins.elemAt data 2);
+  cmdOf = data: builtins.elemAt data 1;
+  allKeys = (map (r: r.to) remaps) ++ lib.mapAttrsToList (_: keyOf) hyprlandShortcuts;
 
-  # Generate Hyprland bind string block
-  dynamicBindsText = builtins.concatStringsSep "\n" (
-    lib.mapAttrsToList (name: data: 
-      "bind = ${convertBinding (builtins.elemAt data 2)}, exec, ${builtins.elemAt data 1}"
-    ) allShortcuts
-  );
+  # pcall: unbinding a key nothing is bound to must not abort the config
+  remapBinds = lib.concatStringsSep "\n" (map (r: ''
+    pcall(hl.unbind, ${builtins.toJSON r.from})
+    pcall(hl.unbind, ${builtins.toJSON r.to})
+    hl.bind(${builtins.toJSON r.to}, hl.dsp.exec_cmd(${builtins.toJSON r.cmd}))
+  '') remaps);
+
+  # Each catalog shortcut replaces any upstream bind on the same key
+  catalogBinds = lib.concatStringsSep "\n" (lib.mapAttrsToList (_: data: ''
+    pcall(hl.unbind, ${builtins.toJSON (keyOf data)})
+    hl.bind(${builtins.toJSON (keyOf data)}, hl.dsp.exec_cmd(${builtins.toJSON (cmdOf data)}))
+  '') hyprlandShortcuts);
 in
 {
-  imports = [ ../../conf/hypr/hypridle.nix ];
-  
-  home.packages = with pkgs; [
-    wofi
-    hyprshot
-    quickshell
-    hypridle
-    swayosd
-    # External script dependencies
-    rofi pavucontrol fortune wl-screenrec alsa-utils awww networkmanager_dmenu
-    wl-clipboard fd qt6.qtmultimedia qt6.qt5compat qt6.qtwebsockets qt6.qtwebengine
-    ripgrep gtk3 cava cliphist tree jq socat pamixer brightnessctl acpi iw bluez
-    networkmanager lm_sensors bc pulseaudio ladspaPlugins ladspa-sdk imagemagick
-
-    # Performance & Media tools
-    inotify-tools
-    playerctl
-    
-    # Fonts for Quickshell UI
-    nerd-fonts.iosevka
-    nerd-fonts.jetbrains-mono
-
-    # Hyprland wallpaper dependencies
-    imagemagick
-    ffmpeg
-    awww
-    mpvpaper
-    matugen
-    file
-
-    # Screenshot system dependencies
-    gpu-screen-recorder
-    grim
-    satty
-    zbar
-
-    # Audio equalizer
-    easyeffects
-  ];
-  
-  services.swayosd = {
+  programs.serpantinum = {
     enable = true;
-    topMargin = 0.9; # optional
+    # The Hyprland autostart launches the daemon; the default systemd unit is
+    # tied to graphical-session.target and would also start in a GNOME session
+    systemd.enable = false;
   };
-  
-  # Abort the build if duplicate shortcut bindings are detected
+
   assertions = [
     {
-      assertion = builtins.length allBindingsList == builtins.length uniqueBindings;
-      message = "Conflict detected in shortcuts.list.nix bindings for Hyprland.";
+      assertion = builtins.length allKeys == builtins.length (lib.unique allKeys);
+      message = "Two shortcuts resolve to the same Hyprland key (remaps and shortcuts.list.nix).";
     }
   ];
 
-  # Link only subdirectories to allow Nix to safely generate the master hyprland.conf
-  xdg.configFile."hypr/config".source = ../../conf/hypr/config;
-  xdg.configFile."hypr/scripts".source = ../../conf/hypr/scripts;
-  xdg.configFile."hypr/colors.conf".source = ../../conf/hypr/colors.conf;
-  xdg.configFile."matugen".source = ../../conf/matugen;
+  # Compositor modules (variables, env, autostart, monitors, settings, keybinds)
+  # read straight from upstream and updated with `nix flake update serpantinum`
+  xdg.configFile."hypr/config".source = "${upstream}/compositors/hyprland/config";
 
-  # Ensure a local override file always exists, even on a fresh install
-  home.activation.ensureHyprLocalConf = lib.hm.dag.entryAfter ["writeBoundary"] ''
-    touch $HOME/.config/hypr/local.conf
-  '';
-  
-  wayland.windowManager.hyprland = {
-    enable = true;
-    # Keep the hyprlang format: the config below is written in it, and the
-    # Home Manager default only moves to Lua with stateVersion >= 26.05
-    configType = "hyprlang";
-    
-    # Inject bindings BEFORE external sources to prevent parser lockouts
-    extraConfig = ''
-      # 1. Failsafe core bindings
-      bind = SUPER, Return, exec, kitty
-      bind = SUPER, X, killactive
-      bind = SUPER SHIFT, M, exit
-      
-      # Workspace switching by physical keycode (layout-independent — works on AZERTY, QWERTY, etc.)
-      bind = SUPER, code:10, exec, bash ~/.config/hypr/scripts/qs_manager.sh 1
-      bind = SUPER, code:11, exec, bash ~/.config/hypr/scripts/qs_manager.sh 2
-      bind = SUPER, code:12, exec, bash ~/.config/hypr/scripts/qs_manager.sh 3
-      bind = SUPER, code:13, exec, bash ~/.config/hypr/scripts/qs_manager.sh 4
-      bind = SUPER, code:14, exec, bash ~/.config/hypr/scripts/qs_manager.sh 5
-      bind = SUPER, code:15, exec, bash ~/.config/hypr/scripts/qs_manager.sh 6
-      bind = SUPER, code:16, exec, bash ~/.config/hypr/scripts/qs_manager.sh 7
-      bind = SUPER, code:17, exec, bash ~/.config/hypr/scripts/qs_manager.sh 8
-      bind = SUPER, code:18, exec, bash ~/.config/hypr/scripts/qs_manager.sh 9
-      bind = SUPER, code:19, exec, bash ~/.config/hypr/scripts/qs_manager.sh 10
+  # Upstream entry point, followed by this machine's overrides
+  xdg.configFile."hypr/hyprland.lua".text =
+    builtins.readFile "${upstream}/compositors/hyprland/hyprland.lua"
+    + ''
 
-      bind = SUPER SHIFT, code:10, exec, bash ~/.config/hypr/scripts/qs_manager.sh 1 move
-      bind = SUPER SHIFT, code:11, exec, bash ~/.config/hypr/scripts/qs_manager.sh 2 move
-      bind = SUPER SHIFT, code:12, exec, bash ~/.config/hypr/scripts/qs_manager.sh 3 move
-      bind = SUPER SHIFT, code:13, exec, bash ~/.config/hypr/scripts/qs_manager.sh 4 move
-      bind = SUPER SHIFT, code:14, exec, bash ~/.config/hypr/scripts/qs_manager.sh 5 move
-      bind = SUPER SHIFT, code:15, exec, bash ~/.config/hypr/scripts/qs_manager.sh 6 move
-      bind = SUPER SHIFT, code:16, exec, bash ~/.config/hypr/scripts/qs_manager.sh 7 move
-      bind = SUPER SHIFT, code:17, exec, bash ~/.config/hypr/scripts/qs_manager.sh 8 move
-      bind = SUPER SHIFT, code:18, exec, bash ~/.config/hypr/scripts/qs_manager.sh 9 move
-      bind = SUPER SHIFT, code:19, exec, bash ~/.config/hypr/scripts/qs_manager.sh 10 move
+      -- Machine overrides, placed after the upstream modules so they win.
+      -- Upstream defaults to a US keyboard; this machine is AZERTY.
+      hl.config({ input = { kb_layout = "fr" } })
 
-      # 2. Dynamic injected bindings
-      ${dynamicBindsText}
+      -- Upstream shortcuts moved to another key
+      ${remapBinds}
 
-      # 3. External modular configuration
-      source = ~/.config/hypr/colors.conf
-      source = ~/.config/hypr/config/monitors.conf
-      source = ~/.config/hypr/config/env.conf
-      source = ~/.config/hypr/config/autostart.conf
-      source = ~/.config/hypr/config/variables.conf
-      source = ~/.config/hypr/config/settings.conf
-      source = ~/.config/hypr/config/rules.conf
-      source = ~/.config/hypr/config/keybindings.conf
+      -- Shortcuts from the shared catalog
+      ${catalogBinds}
 
-      # User-specific local overrides
-      source = ~/.config/hypr/local.conf
+      -- Workspaces by physical key code, so they work on AZERTY, where the digit
+      -- row needs Shift. Bound straight to Hyprland instead of going through
+      -- `serpantinum msg workspace`. Kept last and wrapped in pcall: a mistake
+      -- here must not take the shortcuts above down with it.
+      for i = 1, 10 do
+        local code = "code:" .. (9 + i)
+        local ws = tostring(i)
+        pcall(hl.unbind, "SUPER + " .. (i % 10))
+        pcall(hl.unbind, "SUPER + SHIFT + " .. (i % 10))
+        pcall(function()
+          hl.bind("SUPER + " .. code, hl.dsp.focus({ workspace = ws }))
+          hl.bind("SUPER + SHIFT + " .. code, hl.dsp.window.move({ workspace = ws }))
+        end)
+      end
     '';
 
-    # Leave settings empty to enforce strict ordering in extraConfig
-    settings = {};
-  };
+  # Tools called by the upstream autostart and keybindings, plus what the
+  # catalog shortcuts and the shell UI need once the system module is gone
+  home.packages = with pkgs; [
+    cliphist                   # clipboard history
+    easyeffects                # audio effects
+    playerctl                  # media keys
+    pamixer                    # volume entries of the shared catalog (GNOME)
+    jq
+    tree
+    ripgrep
+    fd
+    nerd-fonts.iosevka         # shell UI icons, installed by the upstream system module
+    nerd-fonts.jetbrains-mono  # same fonts the previous setup installed for the shell UI
+  ];
 }
