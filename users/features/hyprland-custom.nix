@@ -151,11 +151,11 @@ in
       require("local")
     '';
 
-  # Each user gets an empty local.lua once; it is never overwritten afterwards
+  # Each user gets a commented local.lua once, copied from the template; it is
+  # never overwritten afterwards
   home.activation.ensureHyprLocalLua = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     if [ ! -e "$HOME/.config/hypr/local.lua" ]; then
-      mkdir -p "$HOME/.config/hypr"
-      printf '%s\n' '-- Personal Hyprland overrides, loaded last. Apply with: hyprctl reload' > "$HOME/.config/hypr/local.lua"
+      install -Dm644 ${../templates/hypr-local.lua} "$HOME/.config/hypr/local.lua"
     fi
   '';
 
@@ -166,6 +166,7 @@ in
     easyeffects                # audio effects
     playerctl                  # media keys
     pamixer                    # volume entries of the shared catalog (GNOME)
+    pulseaudio                 # provides pactl, called by the shell (client tools only: the server stays disabled)
     nerd-fonts.iosevka         # shell UI icons
     nerd-fonts.jetbrains-mono  # same fonts the previous setup installed
     jq
