@@ -26,6 +26,7 @@ On 27 October 2026:
 
 - Moving or disabling a shortcut from `local.lua`. It follows Hyprland's documented `hl.unbind`; adding one works.
 - The first login of a freshly created account: the activation script, the first-shell hook, and the seeding of `local.lua`.
+- Adding a package from nixpkgs or an external flake to a user flake, as described in [how-to](how-to.md#add-software). The examples follow from the structure of `users/templates/home-flake.nix` and were not run. That the switch records a new input in `flake.lock` by itself is also not checked.
 - The installation sequence in [install](install.md), including `nixos-rebuild --flake` enabling flakes by itself on a system that does not have them yet.
 - Choosing the Hyprland session with an account whose layout does not import `hyprland-custom.nix`, and what Hyprland shows then. No way is known to hide the session entry for some accounts only.
 - `home-manager build --flake . --override-input serpantinum <path>` (see [CONTRIBUTING](../CONTRIBUTING.md#serpantinum)).

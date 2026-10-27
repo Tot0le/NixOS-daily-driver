@@ -43,6 +43,49 @@ Your flake belongs to you and is never overwritten. Put anything personal below 
 
 You cannot remove something your layout installs without editing the layout, which is an administrator's change (see [concepts](concepts.md#layouts-and-features)).
 
+## Add software
+
+Everything here goes in your own flake, `~/.config/home-manager/flake.nix`, and affects only your account. An addition for every account goes through a layout or a feature, which is an administrator's change. Apply any of the edits below with `home-manager switch --flake . -b bak`, in `~/.config/home-manager`.
+
+### A package from nixpkgs
+
+This is the usual case, even for an application that also has its own flake. Find the name with `nix search nixpkgs <word>` or on <https://search.nixos.org/packages>, then add a module below the line `Personal additions go below this line`, before the closing `];` of the `modules` list:
+
+```nix
+          # Personal additions go below this line
+          { home.packages = [ pkgs.htop pkgs.btop ]; }
+```
+
+`pkgs` is already defined in the file and allows unfree packages. Lists add up: a second `{ home.packages = [ ... ]; }` module also works, and both come in addition to what your layout installs. Entries in a Nix list are separated by spaces, not commas.
+
+### An application that only exists as a flake
+
+Three edits in `flake.nix`:
+
+1. Declare the input, next to the others in `inputs`:
+
+   ```nix
+       monapp.url = "github:author/monapp";
+   ```
+
+   If the application's own flake has a `nixpkgs` input, `monapp.inputs.nixpkgs.follows = "nixpkgs";` makes it use yours instead of downloading a second copy, as `home-manager` does in the template.
+2. Add its name to the arguments of `outputs`, next to `serpantinum`:
+
+   ```nix
+     outputs = { nixpkgs, home-manager, daily-driver, serpantinum, monapp, ... }:
+   ```
+3. Use it below the personal line. Most flakes export a package:
+
+   ```nix
+             { home.packages = [ monapp.packages.x86_64-linux.default ]; }
+   ```
+
+   The exact name differs from one flake to the next: `nix flake show github:author/monapp` lists what it exports. A flake that exports a Home Manager module instead (as Serpantinum does with `homeManagerModules.default`) goes straight into the `modules` list, and its own documentation says which options it adds.
+
+The switch records the new input in your `flake.lock`. Update it later on its own with `nix flake update monapp`. To remove the software, delete the lines and switch again; the previous generation stays available ([rollback ladder](troubleshooting.md#rollback-ladder)).
+
+Nothing here changes the system flake, which only has `nixpkgs`: software for every account, or a system service, is an administrator's change in `/etc/nixos`.
+
 ## Update Serpantinum
 
 Nothing changes in your desktop until you update your pin, so new upstream shortcuts never arrive by surprise. The pin that matters is the one in **your** flake.
