@@ -1,160 +1,32 @@
-<div align="center">
-  <img src="https://raw.githubusercontent.com/NixOS/nixos-artwork/9d2cdedd73d64a068214482902adea3d02783ba8/logo/nix-snowflake-colours.svg" alt="NixOS Logo" width="150"/>
+# NixOS daily driver
 
-  <h1>NixOS Personal Configuration</h1>
-  <p><i>A declarative, highly modular, and reproducible NixOS environment tailored for development and daily productivity.</i></p>
+A declarative NixOS setup for a machine shared by several people: GNOME for everyone, an optional Hyprland session running the [Serpantinum](https://github.com/ilyamiro/serpantinum) desktop shell, and one Home Manager environment per user that each user can edit and apply without `sudo`.
 
-  <p>
-    <img src="https://img.shields.io/badge/NixOS-25.11-5277C3.svg?style=for-the-badge&logo=NixOS&logoColor=white" alt="NixOS Version" />
-    <img src="https://img.shields.io/badge/Home_Manager-Enabled-FF7A00.svg?style=for-the-badge&logo=NixOS&logoColor=white" alt="Home Manager" />
-    <img src="https://img.shields.io/badge/Shell-Zsh-181717.svg?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="Zsh" />
-    <img src="https://img.shields.io/badge/Containers-Docker-2496ED.svg?style=for-the-badge&logo=Docker&logoColor=white" alt="Docker" />
-  </p>
-</div>
+> **Status.** The work lives on the `flake-migration` branch and is not merged into `main` yet. The system flake builds. Installing on a new machine is not supported yet: the setup scripts predate the flake, and the manual sequence in [docs/install.md](docs/install.md) has never been run end to end. What is verified and what is not is listed in [docs/status.md](docs/status.md).
 
----
+## Where to start
 
-## 📑 Table of Contents
+| You are | Read |
+| --- | --- |
+| Setting this up on a machine | [install](docs/install.md), then [concepts](docs/concepts.md) |
+| Using this machine with your own account | [concepts](docs/concepts.md) for the picture, then [how-to](docs/how-to.md) and [shortcuts](docs/shortcuts.md) |
+| Administering it (anything that needs `sudo`) | [concepts](docs/concepts.md), then [maintenance](docs/maintenance.md) and [status](docs/status.md) |
+| Facing a problem | [troubleshooting](docs/troubleshooting.md), starting with its rollback ladder |
+| Contributing here or to Serpantinum | [CONTRIBUTING](CONTRIBUTING.md) |
+| Maintaining this repository | [maintainer notes](docs/maintainer-notes.md) |
 
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Installation & Setup](#installation)
-- [Development Tools](#tools)
-- [Desktop & Theming](#theming)
-- [Custom Workflow & Shortcuts](#shortcuts)
+## Repository layout
 
----
-
-## <a id="overview"></a>📖 Overview
-
-This configuration is built with a dual focus on **modular isolation** and **Standalone Workspace Architecture**. While core system features (Hardware, Docker, Cooling) are contained within independent NixOS modules, user environments (dotfiles, terminal, tools) are fully isolated and provisioned automatically using **Home Manager**.
-
-**Key Technical Pillars:**
-* ⚙️ **System Modularity:** Every system component is an independent module. If you don't need a feature, you can disable it by simply removing one line. This ensures your system remains lightweight and contains only the tools you actually use.
-* 📦 **Zero-Touch Provisioning:** When a new user opens their terminal for the first time, their personal `home.nix` workspace is automatically compiled and activated.
-* 🛠️ **Pro Developer Tooling:** Isolated Zsh environments, Kitty terminal, automated PostgreSQL database kits, and safe custom shortcut bindings.
-* 🌡️ **Integrated Hardware Control:** Custom fan control scripts (NBFC) tied to GNOME shortcuts and top-bar monitoring.
-
----
-
-## <a id="architecture"></a>🏗️ Architecture
-
-The `configuration.nix` acts as the central hub. It defines system-level imports and declares the user profiles.
-
-* **`/modules/`**: System-wide capabilities (Docker, VirtualBox, Cooling, Monitoring).
-* **`/templates/`**: Project-specific `nix-shell` environments (Java, Minecraft, PostgreSQL).
-* **`/users/layouts/`**: Base profile definitions (e.g., `all-Feature` or `simple`).
-* **`/users/features/`**: Granular, plug-and-play user app modules (e.g., `kathara.nix`).
-
-When a user is created, an **Activation Script** assigns them a layout (e.g., `all-Feature` or `simple`) and generates a standalone `home-manager` template in their personal directory, which they can then edit freely.
-
----
-
-## <a id="installation"></a>⚙️ Installation & Setup
-
-### 1. 📥 Get the Configuration
-
-1. **Enter a temporary shell with Git** (required if Git is not yet installed on your system):
-   ```bash
-   nix-shell -p git
-   ```
-   
-2. **Backup your hardware profile** (vital for your specific machine):
-   ```bash
-   sudo cp /etc/nixos/hardware-configuration.nix /tmp/
-   ```
-3. **Clone the repository** (this will empty the directory first):
-   ```bash
-   sudo rm -rf /etc/nixos/*
-   sudo git clone https://github.com/Tot0le/NixOS_config.git /etc/nixos
-   ```
-4. **Restore your hardware profile**:
-   ```bash
-   sudo cp /tmp/hardware-configuration.nix /etc/nixos/
-   ```
-
-### 2. 🚀 Automated Secure Setup
-
-Run the interactive installation script. It will automatically detect your username, safely patch the configuration files, create the system user if necessary, build the system, and fix the repository permissions:
-
-```bash
-sudo ./install.sh
+```text
+flake.nix, flake.lock    system flake (input: nixpkgs 26.05)
+configuration.nix        accounts, services, GNOME, the Hyprland session entry
+modules/                 system modules (cooling, docker, keyd, monitoring, ...)
+users/layouts/           what each kind of account gets
+users/features/          building blocks the layouts import
+users/templates/         files copied once into a new user's home
+conf/                    shortcut catalog, Hyprland shortcut remaps, application settings
+scripts/                 helper commands installed for users
+templates/               Nix environment kits for development projects
+install.sh, add_user.sh  setup scripts from before the flake setup (see docs/install.md)
+docs/                    documentation
 ```
-Once the script completes successfully, open a **NEW** terminal window to trigger your personal workspace initialization (Zsh, Home Manager, etc.).
-
-### 3. 🔄 Future Updates
-For future modifications to your user-specific configuration (dotfiles, terminal, shortcuts), you don't need root privileges anymore. Simply run:
-
-```bash
-home-manager switch
-```
-
----
-
-## <a id="tools"></a>🧰 Development Tools
-
-### 🌐 Network Emulation (kathará)
-A fully configured network emulation environment utilizing Docker. It is modularized within features/kathara.nix and natively defaults to xterm to ensure robust rendering of virtual device consoles without Wayland/OpenGL conflicts.
-
-### 🐘 PostgreSQL Kit (`postgres-kit`)
-This configuration includes a template for an isolated PostgreSQL development environment. It allows you to run a local database server within your project folder without affecting the global system.
-
-1. Navigate to your project directory.
-2. Run `setup-db`. This copies the template locally and opens it in `nano` for any specific edits.
-3. Upon closing the editor, the Nix shell environment launches automatically.
-4. Start the server with `pg_ctl start -l logfile`. VSCodium is pre-configured with the "Database Client" extension to connect.
-5. Exit the shell with <kbd>Ctrl</kbd> + <kbd>D</kbd>; a `trap` will automatically shut down the database server.
-
-### ☕ Java & Minecraft Kits
-Use `setup-java` (JDK 21, JavaFX, Maven) or `setup-minecraft-server` (JDK 8/17/21/25 depending on your server, plus tmux, Playit.gg, and Python+discord.py) to instantly deploy isolated project environments with proper library pathing for graphical interfaces.
-
-### 🔑 Local Git Token Manager
-A secure, per-user script to copy your GitHub token to the Wayland clipboard:
-1. Run `copyGitToken`. On the first run, it will interactively prompt you to store your token and create a local access PIN.
-2. Credentials are automatically locked down (`chmod 600`) in `~/.config/`.
-3. Subsequent runs will only require your PIN to copy the token and trigger a GNOME notification.
-
----
-
-## <a id="shortcuts"></a>⌨️ Custom Workflow & Shortcuts
-
-Shortcuts are centrally configured in `conf/shortcuts.list.nix` and bridged dynamically to GNOME via a custom Python sync script.
-
-| Feature | Keybinding |
-| :--- | :--- |
-| **Kitty Terminal** | <kbd>Super</kbd> + <kbd>C</kbd> |
-| **Firefox Browser** | <kbd>Super</kbd> + <kbd>F</kbd> |
-| **Nautilus Explorer** | <kbd>Super</kbd> + <kbd>E</kbd> |
-| **Color Picker** | <kbd>Super</kbd> + <kbd>ù</kbd> |
-| **Fan Control** | <kbd>Super</kbd> + <kbd>F1-F7</kbd> |
-
-### 📊 Hardware Monitoring
-Integrated fan control via <kbd>Super</kbd> + <kbd>F1-F7</kbd> and real-time status updates in the Gnome Top Bar using custom Argos scripts.
-
----
-
-## <a id="theming"></a>🎨 Desktop & Theming
-
-The environment uses the **Catppuccin** aesthetic across the system, ensuring a consistent and visually pleasing experience.
-
-### 🌗 Dynamic Theme Sync
-GNOME and the Kitty terminal are fully synchronized. Changing the GNOME color scheme (Dark/Light mode) will automatically trigger a background service (`kitty-theme-sync`) to switch Kitty between **Catppuccin Mocha** (Dark) and **Catppuccin Latte** (Light).
-- Manually switch terminal themes with: `switch_theme [mocha|macchiato|frappe|latte]`
-- Toggle terminal opacity with: <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>O</kbd> / <kbd>P</kbd>
-
-### 🖼️ Wallpaper Management
-Your desktop background is managed declaratively. To change it, open your `home.nix` and update the `my.gnome.wallpaper` variable to point to your new image file.
-* **GNOME Cache Warning:** If you replace the image file but keep the *exact same filename* (e.g., `wallpaper.jpg`), GNOME will not update the background immediately due to memory caching. Always use a new filename or log out and back in to force the refresh.
-* *(Note: A detailed quick-start tutorial is automatically generated in your `Pictures` folder upon your first login).*
-
-### 🛠️ Customizing Your Setup
-**Recommendation:** For the best experience, start by assigning yourself the `all-Feature` layout in `configuration.nix`. Once your `home.nix` is generated in your personal directory, simply open it and remove the imports or features you don't need. This is much faster and cleaner than building a layout from scratch!
-
-### 🚑 Troubleshooting Themes
-If your GNOME themes or icons ever get stuck due to manual tweaking in the interface, use these fallback commands to reset them to default before running a system rebuild:
-
-    gsettings reset org.gnome.desktop.interface icon-theme
-    gsettings reset org.gnome.desktop.interface gtk-theme
-
----
-<p align="center"><i>Built with ❤️ on NixOS</i></p>
