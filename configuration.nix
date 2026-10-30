@@ -64,6 +64,9 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.grub.useOSProber = true;
 
+  services.flatpak.enable = true;
+  
+
   networking.hostName = pkgs.lib.mkDefault "nixos";
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant. conflict with networking.networkmanager.enable = true;
 
