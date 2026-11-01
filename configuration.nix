@@ -11,63 +11,30 @@
 { config, pkgs, lib, inputs, ... }:
 
 let
-  # Define all system users and their respective roles
-  # NOTE: After first rebuild, you must manually set passwords:
-  # sudo passwd <username>
-  # IMPORTANT: Run 'sudo chown -R <username>:users /etc/nixos' to fix shell permissions (e.g., Git status).
-  usersConfigs = {
-    alice = { fullName = "Alice Smith"; isAdmin = false; layout = "simple"; };
-    anatole = { fullName = "anatole"; isAdmin = true; layout = "all-Feature"; };
-  };
+  # The accounts of this machine, declared in hosts/<host>/users.nix
+  usersConfigs = config.my.users;
   
   # Extract names for module propagation
   userList = builtins.attrNames usersConfigs;
 in
 {
-  imports = [ 
-    ./hardware-configuration.nix
+  imports = [
+    ./modules/users.nix
 
-    # System-level modules (Hardware & Security)
-    ./modules/cooling.nix
+    # System-level modules shared by every machine. Machine-specific ones
+    # (cooling, corsair, virtualization) are imported by hosts/<host>/default.nix.
     ./modules/monitoring.nix
     ./modules/docker.nix
     ./modules/keyd.nix
-    #./modules/virtualization.nix
-    #./modules/corsair.nix
-  ] ++ (if builtins.pathExists ./local.nix then [ ./local.nix ] else []);
+  ];
   
-  environment.etc."systemd/system-sleep/xhci-fix" = {
-    mode = "0755";
-    text = ''
-      #!/bin/sh
-      # Works around a known AMD A520 chipset XHCI resume bug: after S3
-      # suspend, the controller comes back in an error state (USBSTS 0x401)
-      # unless it's fully unbound before sleep and rebound after wake.
-      # Confirmed fix — resume errors disappeared in testing after this.
-      case "$1" in
-        pre)
-          echo 0000:04:00.0 > /sys/bus/pci/drivers/xhci_hcd/unbind
-          ;;
-        post)
-          echo 0000:04:00.0 > /sys/bus/pci/drivers/xhci_hcd/bind
-          ;;
-      esac
-    '';
-  };
   # Global arguments for modules
   _module.args = { inherit userList usersConfigs; };
 
-  # Bootloader.
-  boot.loader.grub.enable = true;
-  boot.loader.grub.device = "nodev";
-  boot.loader.grub.efiSupport = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  boot.loader.grub.useOSProber = true;
 
   services.flatpak.enable = true;
   
 
-  networking.hostName = pkgs.lib.mkDefault "nixos";
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant. conflict with networking.networkmanager.enable = true;
 
   # Configure network proxy if necessary
@@ -274,12 +241,5 @@ in
   # Optimize storage by hardlinking identical files in the Nix store
   nix.settings.auto-optimise-store = true;
   
-  # This value determines the NixOS release from which the default
-  # settings for stateful data, like file locations and database versions
-  # on your system were taken. It‘s perfectly fine and recommended to leave
-  # this value at the release version of the first install of this system.
-  # Before changing this value read the documentation for this option
-  # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "25.11"; # Did you read the comment?
 
 }
