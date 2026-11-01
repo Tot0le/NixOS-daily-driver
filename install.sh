@@ -1,80 +1,150 @@
 #!/usr/bin/env bash
+# First installation on a machine that already runs a fresh NixOS.
+# Creates hosts/<machine>/ from what the NixOS installer decided for this
+# machine (hardware, boot loader, release), declares the first account, then
+# builds and activates the flake. The repository must be cloned in /etc/nixos.
 
-# Exit immediately if a command exits with a non-zero status
-set -e
+set -euo pipefail
 
-echo "==============================================="
-echo "🚀 NixOS Workspace - Secure Installation"
-echo "==============================================="
-echo ""
+readonly REPO="/etc/nixos"
+# The installer's own configuration, moved aside before cloning (see the README)
+readonly ORIGINAL="/etc/nixos.orig"
 
-# Ensure the script is run as root
-if [ "$EUID" -ne 0 ]
-then
-    echo "❌ Error: This script must be run with sudo."
+die() {
+    echo "❌ $*" >&2
     exit 1
+}
+
+[ "$EUID" -eq 0 ] || die "This script must be run with sudo."
+[ "$(readlink -f "$(dirname "$0")")" = "$REPO" ] || die "Run this script from the repository cloned in $REPO."
+cd "$REPO"
+[ -f flake.nix ] && [ -d hosts ] || die "$REPO does not look like this repository."
+
+echo "==============================================="
+echo "🚀 NixOS daily driver - first installation"
+echo "==============================================="
+echo ""
+
+# --- Questions ---------------------------------------------------------------
+
+declare defaultUser="${SUDO_USER:-}"
+declare inputUser=""
+read -r -p "👤 Primary username [$defaultUser]: " inputUser
+declare targetUser="${inputUser:-$defaultUser}"
+[[ "$targetUser" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "Invalid username '$targetUser': use lowercase letters, digits, '-' and '_'."
+
+declare inputFullName=""
+read -r -p "📛 Full name [$targetUser]: " inputFullName
+declare fullName="${inputFullName:-$targetUser}"
+# The name is written inside a Nix string: refuse what could break out of it
+case "$fullName" in
+    *\"* | *\\* | *\$* | *\`*) die "The full name cannot contain \", \\, \$ or backticks." ;;
+esac
+
+declare -a layouts
+mapfile -t layouts < <(find users/layouts -maxdepth 1 -name '*.nix' -printf '%f\n' | sed 's/\.nix$//' | sort)
+declare inputLayout=""
+read -r -p "🎨 Layout (${layouts[*]}) [all-Feature]: " inputLayout
+declare layout="${inputLayout:-all-Feature}"
+printf '%s\n' "${layouts[@]}" | grep -qx -- "$layout" || die "Unknown layout '$layout'."
+
+# The machine name is also the directory name under hosts/ and the host name
+declare defaultHost="${targetUser//_/-}-pc"
+declare inputHost=""
+read -r -p "🖥️  Machine name [$defaultHost]: " inputHost
+declare host="${inputHost:-$defaultHost}"
+[[ "$host" =~ ^[a-z]([a-z0-9-]*[a-z0-9])?$ ]] || die "Invalid machine name '$host': lowercase letters, digits and '-', starting with a letter."
+[ ! -e "hosts/$host" ] || die "hosts/$host already exists: pick another machine name."
+
+# --- What the NixOS installer decided for this machine ------------------------
+
+declare stateVersion=""
+declare bootLines=""
+if [ -f "$ORIGINAL/configuration.nix" ]
+then
+    stateVersion="$(grep -oE 'system\.stateVersion = "[^"]+"' "$ORIGINAL/configuration.nix" | grep -oE '"[^"]+"' | tr -d '"' | head -n 1 || true)"
+    # Single-line, uncommented boot.loader settings are copied as they are
+    bootLines="$(grep -E '^[[:space:]]*boot\.loader\.[^#]*;' "$ORIGINAL/configuration.nix" || true)"
 fi
 
-# 1. Detect target user (SUDO_USER contains the real username of the person who typed 'sudo')
-DEFAULT_USER=${SUDO_USER:-"mainuser"}
-
-read -p "👤 Enter your primary username [$DEFAULT_USER]: " INPUT_USER
-TARGET_USER=${INPUT_USER:-$DEFAULT_USER}
-
-# 2. System User Verification & Creation
-if id "$TARGET_USER" &>/dev/null
+if [ -z "$stateVersion" ]
 then
-    echo "✅ User '$TARGET_USER' already exists on the system."
-else
-    echo "⚠️ User '$TARGET_USER' does not exist!"
-    read -p "Do you want to create it now and set a password? (Y/n): " CREATE_USER
-    if [[ "$CREATE_USER" =~ ^[Nn]$ ]]
-    then
-        echo "❌ Aborted. The system user must exist to prevent permission lockouts."
-        exit 1
-    fi
-    
-    # Create the base user and prompt for password immediately
-    useradd -m "$TARGET_USER"
-    echo "🔑 Please set the password for $TARGET_USER:"
-    passwd "$TARGET_USER"
+    stateVersion="$(nixos-version | cut -d. -f1,2)"
+    echo "ℹ️  No installer configuration to read the first-install release from: using the current release ($stateVersion)."
 fi
 
-# 3. Patch configuration.nix safely
-echo "🔧 Patching configuration.nix with user '$TARGET_USER'..."
-# Replace the generic 'mainuser =' key with the actual username
-sed -i "s/mainuser = {/$TARGET_USER = {/g" /etc/nixos/configuration.nix
-sed -i "s/fullName = \"Main User\"/fullName = \"$TARGET_USER\"/g" /etc/nixos/configuration.nix
-
-# 4. Create machine-local config (never committed — see local.nix in .gitignore)
-if [ -f /etc/nixos/local.nix ]
+if [ -z "$bootLines" ]
 then
-    echo "✅ local.nix already exists, keeping it as-is."
-else
-    DEFAULT_HOSTNAME="nixos-$(hostname 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-' | head -c 20)"
-    read -p "🖥️  Enter a hostname for this machine [$DEFAULT_HOSTNAME]: " INPUT_HOSTNAME
-    TARGET_HOSTNAME=${INPUT_HOSTNAME:-$DEFAULT_HOSTNAME}
+    [ -d /sys/firmware/efi ] || die "Could not read the boot loader settings and this machine does not boot in UEFI mode. Put the installer's configuration back as $ORIGINAL (see the README) and run this script again."
+    bootLines='  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;'
+    echo "ℹ️  Boot loader settings not found: using systemd-boot (UEFI)."
+fi
 
-    cat > /etc/nixos/local.nix <<EOF
-{ networking.hostName = "$TARGET_HOSTNAME"; }
+# --- Generate hosts/<machine>/ ------------------------------------------------
+
+declare staging=""
+staging="$(mktemp -d "$REPO/hosts/.new.XXXXXX")"
+# Never leave a half-written directory behind: the flake would list it as a machine
+trap 'rm -rf "$staging"' EXIT
+
+nixos-generate-config --show-hardware-config > "$staging/hardware-configuration.nix"
+
+cat > "$staging/users.nix" <<EOF
+{
+  my.users = {
+    $targetUser = { fullName = "$fullName"; isAdmin = true; layout = "$layout"; };
+  };
+}
 EOF
-    echo "✅ Created local.nix with hostname '$TARGET_HOSTNAME'."
+
+cat > "$staging/default.nix" <<EOF
+# Generated by install.sh. Anything specific to this machine lives here; what
+# every machine shares is in configuration.nix and modules/.
+{ ... }:
+
+{
+  imports = [
+    ./hardware-configuration.nix
+    ./users.nix
+  ];
+
+  # Boot loader, as chosen by the NixOS installer for this machine
+$bootLines
+
+  # Release this machine was first installed with: never change it
+  system.stateVersion = "$stateVersion";
+}
+EOF
+
+chmod 755 "$staging"
+mv "$staging" "hosts/$host"
+echo "✅ Created hosts/$host"
+
+# --- System account -----------------------------------------------------------
+
+if id "$targetUser" &> /dev/null
+then
+    echo "✅ User '$targetUser' already exists on the system."
+else
+    useradd -m "$targetUser"
+    echo "🔑 Set the password for $targetUser:"
+    passwd "$targetUser"
 fi
 
-# 5. Build the System
-echo "📦 Staging files for Nix..."
-cd /etc/nixos
-git config --global --add safe.directory /etc/nixos
-git add .
+# --- Build and activate -------------------------------------------------------
 
-echo "🔨 Building NixOS (this may take a few minutes)..."
-nixos-rebuild switch
+# root runs git on a repository it may not own, and a flake only sees tracked files
+git config --global --add safe.directory "$REPO"
+git add "hosts/$host"
 
-# 6. Fix permissions
-echo "🔐 Assigning repository ownership to $TARGET_USER..."
-chown -R "$TARGET_USER":users /etc/nixos
-chown -R "$TARGET_USER":users "/home/$TARGET_USER"
+echo "🔨 Building and activating '$host' (this can take a long time)."
+echo "   If it fails, fix the cause and run: sudo nixos-rebuild switch --flake $REPO#$host"
+nixos-rebuild switch --flake "$REPO#$host"
+
+# The activation creates the account's flake as root: make sure the home is theirs
+chown -R "$targetUser":users "/home/$targetUser"
 
 echo ""
-echo "🎉 System built successfully!"
-echo "👉 Please close this terminal window and open a NEW one to initialize your workspace tools."
+echo "🎉 Installed. Close this terminal and open a new one: the first terminal"
+echo "   sets up your personal environment (a few minutes, needs the network)."
