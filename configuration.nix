@@ -183,7 +183,10 @@ in
   '';
 
   # Seed a per-user flake once; after that the file belongs to the user
-  system.activationScripts.setupUserHomes = ''
+  # Runs once the accounts and their home directories exist; otherwise root would
+  # create a new account's home and its owner could not log in
+  system.activationScripts.setupUserHomes.deps = [ "users" ];
+  system.activationScripts.setupUserHomes.text = ''
     ${builtins.concatStringsSep "\n" (pkgs.lib.mapAttrsToList (userName: userInfo: ''
       declare hmConfigDir="/home/${userName}/.config/home-manager"
 
@@ -193,6 +196,7 @@ in
           ${pkgs.gnused}/bin/sed \
               -e 's|@USERNAME@|${userName}|g' \
               -e 's|@LAYOUT@|${userInfo.layout}|g' \
+              -e 's|@NIXPKGS_REV@|${inputs.nixpkgs.rev}|g' \
               ${./users/templates/home-flake.nix} > "$hmConfigDir/flake.nix"
           ${pkgs.coreutils}/bin/chown -R ${userName}:users "/home/${userName}/.config"
       fi

@@ -4,7 +4,9 @@
   description = "Home Manager configuration for @USERNAME@";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
+    # Same nixpkgs revision as the system when the account was created, so that a
+    # newer revision cannot break a package the system builds fine
+    nixpkgs.url = "github:nixos/nixpkgs/@NIXPKGS_REV@";
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
       # Same nixpkgs everywhere, to avoid downloading a second copy
