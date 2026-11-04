@@ -2,7 +2,8 @@
 # First installation on a machine that already runs a fresh NixOS.
 # Creates hosts/<machine>/ from what the NixOS installer decided for this
 # machine (hardware, boot loader, release), declares the first account, then
-# builds and activates the flake. The repository must be cloned in /etc/nixos.
+# builds it and makes it the default at the next boot. The repository must be
+# cloned in /etc/nixos.
 
 set -euo pipefail
 
@@ -65,6 +66,8 @@ then
     stateVersion="$(grep -oE 'system\.stateVersion = "[^"]+"' "$ORIGINAL/configuration.nix" | grep -oE '"[^"]+"' | tr -d '"' | head -n 1 || true)"
     # Single-line, uncommented boot.loader settings are copied as they are
     bootLines="$(grep -E '^[[:space:]]*boot\.loader\.[^#]*;' "$ORIGINAL/configuration.nix" || true)"
+    echo "✅ Read from $ORIGINAL/configuration.nix: release '$stateVersion' and these boot loader settings:"
+    echo "$bootLines"
 fi
 
 if [ -z "$stateVersion" ]
@@ -79,6 +82,31 @@ then
     bootLines='  boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;'
     echo "ℹ️  Boot loader settings not found: using systemd-boot (UEFI)."
+fi
+
+# --- Warnings -------------------------------------------------------------------
+
+# The flake is built on the nixpkgs release it declares: an older installer image
+# means an upgrade
+declare configRelease=""
+configRelease="$(grep -oE 'nixpkgs/nixos-[0-9]+\.[0-9]+' flake.nix | head -n 1 | sed 's|.*nixos-||' || true)"
+declare runningRelease=""
+runningRelease="$(nixos-version | cut -d. -f1,2)"
+if [ -n "$configRelease" ] && [ "$configRelease" != "$runningRelease" ]
+then
+    echo "ℹ️  This system runs NixOS $runningRelease and the configuration is built on $configRelease:"
+    echo "   that is an upgrade. An installer image of release $configRelease avoids it."
+fi
+
+# Accounts that the new configuration does not declare are normally removed
+if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "$targetUser" ]
+then
+    echo "⚠️  You are logged in as '$SUDO_USER', which the new configuration does not declare:"
+    echo "   NixOS normally removes such accounts (their files in /home stay)."
+    echo "   Use '$SUDO_USER' as primary username to keep it."
+    declare confirm=""
+    read -r -p "Continue anyway? (y/N): " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || die "Aborted."
 fi
 
 # --- Generate hosts/<machine>/ ------------------------------------------------
@@ -132,19 +160,26 @@ else
     passwd "$targetUser"
 fi
 
-# --- Build and activate -------------------------------------------------------
+# --- Build for the next boot ----------------------------------------------------
 
 # root runs git on a repository it may not own, and a flake only sees tracked files
 git config --global --add safe.directory "$REPO"
 git add "hosts/$host"
 
-echo "🔨 Building and activating '$host' (this can take a long time)."
-echo "   If it fails, fix the cause and run: sudo nixos-rebuild switch --flake $REPO#$host"
-nixos-rebuild switch --flake "$REPO#$host"
-
-# The activation creates the account's flake as root: make sure the home is theirs
-chown -R "$targetUser":users "/home/$targetUser"
+# 'boot' and not 'switch': in testing, switching live restarted the desktop session
+# of the person installing, left a black screen and killed the terminal running this
+# script. The new system is simply the one that starts next.
+echo "🔨 Building '$host' for the next boot (this can take a long time)."
+echo "   If it fails, fix the cause and run: sudo nixos-rebuild boot --flake $REPO#$host"
+nixos-rebuild boot --flake "$REPO#$host"
 
 echo ""
-echo "🎉 Installed. Close this terminal and open a new one: the first terminal"
-echo "   sets up your personal environment (a few minutes, needs the network)."
+echo "🎉 Installed. The new system starts at the next boot. Your personal environment"
+echo "   is set up when you open your first terminal there (a few minutes, needs the network)."
+
+declare answer=""
+read -r -p "Reboot now? (y/N): " answer
+if [[ "$answer" =~ ^[Yy]$ ]]
+then
+    systemctl reboot
+fi
